@@ -1,19 +1,16 @@
-// src/components/layouts/MainLayout.tsx
 import React, { ReactNode } from "react";
-import { Box, Container } from "@mui/material";
-
+import { Box } from "@mui/material";
+import LeftBar from "../ui/LeftBar";
 interface MainLayoutProps {
   children: ReactNode;
 }
 
-const MainLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-    return (
-      <div>
-        <nav>Barra de navegación</nav>
-        <main>{children}</main>
-      </div>
-    );
-  };
-  
+const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
+  return (
+    <Box sx={{ display: "flex", minHeight: "100vh", backgroundColor: "#121212", color: "#fff" }}>
+      <LeftBar>{children}</LeftBar>
+    </Box>
+  );
+};
 
 export default MainLayout;
