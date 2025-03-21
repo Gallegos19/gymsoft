@@ -1,15 +1,11 @@
-// src/components/layouts/MainLayout.tsx
-import React, { ReactNode } from "react";
-import { Box, Container } from "@mui/material";
+import React from "react";
+import Navbar from "../NavBar";
 
-interface MainLayoutProps {
-  children: ReactNode;
-}
 
 const MainLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     return (
       <div>
-        <nav>Barra de navegación</nav>
+        <Navbar/>
         <main>{children}</main>
       </div>
     );
