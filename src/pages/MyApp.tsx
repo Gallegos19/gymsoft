@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Box, Typography, Button, Fade } from "@mui/material";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
-import MyAppPhone from "../assets/img/MyAppPhone.png";
+import MyAppPhone from "../assets/img/Movil.png";
 import MyAppPc from "../assets/img/MyAppPc.png";
 
 const MyApp = () => {
@@ -31,7 +31,7 @@ const MyApp = () => {
           display: "flex",
           justifyContent: "center",
           alignItems: "center",
-          gap: selectedView ? 0 : 5, // Si hay selección, elimina el espacio
+          gap: selectedView ? 0 : 5, 
           mt: 4,
           width: "90%",
           transition: "all 0.5s ease",
@@ -51,7 +51,7 @@ const MyApp = () => {
               boxShadow: "0px 4px 15px rgba(255, 165, 0, 0.5)",
               cursor: "pointer",
               transition: "all 0.5s ease",
-              opacity: selectedView && selectedView !== "admin" ? 0 : 1, // Oculta la otra vista
+              opacity: selectedView && selectedView !== "admin" ? 0 : 1, 
               display: selectedView && selectedView !== "admin" ? "none" : "block",
             }}
           />
@@ -71,7 +71,7 @@ const MyApp = () => {
               boxShadow: "0px 4px 15px rgba(255, 165, 0, 0.5)",
               cursor: "pointer",
               transition: "all 0.5s ease",
-              opacity: selectedView && selectedView !== "client" ? 0 : 1, // Oculta la otra vista
+              opacity: selectedView && selectedView !== "client" ? 0 : 1, 
               display: selectedView && selectedView !== "client" ? "none" : "block",
             }}
           />

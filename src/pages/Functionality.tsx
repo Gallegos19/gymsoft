@@ -48,7 +48,7 @@ const Functionality = () => {
               transition: "transform 0.3s ease, box-shadow 0.3s ease",
               "&:hover": {
                 transform: "scale(1.1)",
-                boxShadow: "0px 4px 20px rgba(255, 165, 0, 0.5)", // Efecto de brillo naranja
+                boxShadow: "0px 4px 20px rgba(255, 165, 0, 0.5)", 
               },
             }}
           />
