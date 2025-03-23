@@ -17,6 +17,7 @@ import VisibilityOffIcon from '@mui/icons-material/VisibilityOff';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import img from 'assets/mas-fuerte-joven-atleta-caucasico-muscular-practicando.avif';
 import { useNavigate } from "react-router-dom";
+import Auth from "../api/clients/Auth";
 
 // Credenciales de prueba
 const TEST_EMAIL = "gallegos@gmail.com";
@@ -100,6 +101,7 @@ const Login: React.FC = () => {
   const [email, setEmail] = useState<string>('');
   const [password, setPassword] = useState<string>('');
   const [showPassword, setShowPassword] = useState<boolean>(false);
+  const [loading, setLoading] = useState<boolean>(false);
   const [errors, setErrors] = useState<ErrorState>({
     email: false,
     password: false,
@@ -157,15 +159,31 @@ const Login: React.FC = () => {
     validatePassword(newPassword);
   };
 
-  const handleLogin = () => {
+  const handleLogin = async(e: React.FormEvent) => {
     const isEmailValid = validateEmail(email);
     const isPasswordValid = validatePassword(password);
+    e.preventDefault();
+    setLoading(true);
+    setLoginError('');
     
     if (!isEmailValid || !isPasswordValid) {
       return;
     }
 
-    // Simulando autenticación con credenciales de prueba
+    try {
+        const success = await Auth.login({ email, password });
+        if (success) {
+            navigate("/home");
+        } else {
+            setLoginError("Correo electrónico o contraseña incorrectos");
+        }
+    }catch (error) {
+        setLoginError("Ocurrió un error al iniciar sesión");
+    }finally
+    {
+        setLoading(false);
+    }
+
     if (email === TEST_EMAIL && password === TEST_PASSWORD) {
       navigate("/");
     } else {
@@ -175,7 +193,7 @@ const Login: React.FC = () => {
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter') {
-      handleLogin();
+      handleLogin(e);
     }
   };
   

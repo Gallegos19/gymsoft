@@ -25,6 +25,7 @@ import MenuIcon from "@mui/icons-material/Menu";
 import GroupIcon from "@mui/icons-material/Group";
 import { useNavigate, useLocation } from "react-router-dom";
 import img from "../../assets/GSOFT.avif";
+import StorageService from "../../core/services/StorageService";
 
 interface LeftBarProps {
   children: React.ReactNode;
@@ -61,8 +62,8 @@ const LeftBar: React.FC<LeftBarProps> = ({ children }) => {
   };
 
   const handleLogout = () => {
-    console.log("Cerrando sesión...");
-    // Tu lógica de cierre de sesión aquí
+    StorageService.clear();
+    navigate("/login");
   };
 
   const handleNavigation = (path: string) => {
@@ -120,10 +121,10 @@ const LeftBar: React.FC<LeftBarProps> = ({ children }) => {
       {/* Navigation Items */}
       <List sx={{ padding: '8px', flex: 1, overflow: "auto" }}>
         <ListItemButton 
-          onClick={() => handleNavigation("/")}
-          sx={getListItemStyle("/")}
+          onClick={() => handleNavigation("/home")}
+          sx={getListItemStyle("/home")}
         >
-          <ListItemIcon sx={getIconStyle("/")}>
+          <ListItemIcon sx={getIconStyle("/home")}>
             <HomeIcon />
           </ListItemIcon>
           {(expanded || isMobile) && <ListItemText primary="Inicio" sx={{ "& .MuiListItemText-primary": { fontSize: "0.9rem" } }} />}
