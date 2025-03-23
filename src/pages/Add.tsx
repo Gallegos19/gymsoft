@@ -9,13 +9,15 @@ import {
   MenuItem,
   Select,
   FormControl,
-  InputLabel
+  InputLabel,
+  useMediaQuery,
+  useTheme
 } from "@mui/material";
 import CloudUploadIcon from '@mui/icons-material/CloudUpload';
 import ArrowDropDownIcon from '@mui/icons-material/ArrowDropDown';
 import Header from "../components/ui/Header";
 import { styled } from '@mui/material/styles';
-import img from 'assets/entrenamiento-joven-pareja-deportiva.jpg';
+import img from 'assets/entrenamiento-joven-pareja-deportiva.avif';
 
 // Styled components
 const DarkPaper = styled(Paper)(({ theme }) => ({
@@ -25,6 +27,10 @@ const DarkPaper = styled(Paper)(({ theme }) => ({
   height: '100%',
   borderRadius: 8,
   display: 'flex',
+  flexDirection: 'column',
+  [theme.breakpoints.up('md')]: {
+    flexDirection: 'row',
+  },
 }));
 
 const StyledTextField = styled(TextField)({
@@ -82,7 +88,7 @@ const OrangeButton = styled(Button)({
   padding: '8px 16px',
 });
 
-const ImageUploadBox = styled(Box)({
+const ImageUploadBox = styled(Box)(({ theme }) => ({
   display: 'flex',
   flexDirection: 'column',
   alignItems: 'center',
@@ -90,20 +96,27 @@ const ImageUploadBox = styled(Box)({
   backgroundColor: '#fff',
   borderRadius: 4,
   padding: '15px',
-  height: '120px',  // Reducido de 150px
+  height: '120px',
   width: '100%',
   cursor: 'pointer',
   border: '1px dashed #ff7b00',
   '&:hover': {
     backgroundColor: '#fff8f2',
   },
-});
+  [theme.breakpoints.down('sm')]: {
+    height: '100px',
+  },
+}));
 
 const HiddenInput = styled('input')({
   display: 'none',
 });
 
 const Add: React.FC = () => {
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+  const isTablet = useMediaQuery(theme.breakpoints.between('sm', 'md'));
+  
   // Estados para los campos de formulario
   const [nombre, setNombre] = useState('');
   const [apellido, setApellido] = useState('');
@@ -138,21 +151,29 @@ const Add: React.FC = () => {
   return (
     <Box sx={{ 
       display: 'flex', 
-      minHeight: '100vh', 
+      minHeight: '80vh', 
       backgroundColor: '#12151f', 
       color: '#fff', 
-      p: 2 
+      p: { xs: 1, sm: 2 } 
     }}>
-      <Grid container spacing={2}>
+      <Grid container spacing={{ xs: 1, sm: 2 }}>
         {/* Header section */}
         <Grid item xs={12}>
           <Header gymName="NOMBRE DEL GYM" />
         </Grid>
 
         {/* Title and manage button */}
-        <Grid item xs={12} sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <Grid item xs={12} sx={{ 
+          display: 'flex', 
+          flexDirection: { xs: 'column', sm: 'row' }, 
+          justifyContent: 'space-between', 
+          alignItems: { xs: 'flex-start', sm: 'center' },
+          gap: { xs: 1, sm: 0 }
+        }}>
           <Typography variant="h6" color="#ff7b00">Agregar Membresia</Typography>
-          <OrangeButton>Gestionar membresías</OrangeButton>
+          <OrangeButton size={isMobile ? "small" : "medium"}>
+            Gestionar membresías
+          </OrangeButton>
         </Grid>
 
         {/* Main content */}
@@ -161,10 +182,12 @@ const Add: React.FC = () => {
             {/* Left section - Image */}
             <Box 
               sx={{ 
-                width: '180px', 
+                width: { xs: '100%', md: '180px' }, 
+                height: { xs: '200px', md: 'auto' },
                 borderRadius: 2, 
                 overflow: 'hidden', 
-                mr: 2,
+                mb: { xs: 2, md: 0 },
+                mr: { md: 2 },
                 border: '1px solid #ff7b00'
               }}
             >
@@ -181,9 +204,17 @@ const Add: React.FC = () => {
             </Box>
             
             {/* Right section - Form */}
-            <Box sx={{ flex: 1, display: 'flex' }}>
+            <Box sx={{ 
+              flex: 1, 
+              display: 'flex',
+              flexDirection: { xs: 'column', md: 'row' }
+            }}>
               {/* Form fields */}
-              <Box sx={{ flex: 1, mr: 4 }}>
+              <Box sx={{ 
+                flex: 1, 
+                mr: { md: 4 },
+                mb: { xs: 2, md: 0 }
+              }}>
                 <StyledTextField 
                   fullWidth
                   placeholder="Nombre completo"
@@ -244,9 +275,19 @@ const Add: React.FC = () => {
                 </StyledSelect>
               </Box>
               
-              {/* Image upload - tamaño reducido y funcionalidad de subida */}
-              <Box sx={{ flex: 0, mr: 8, display: 'flex', alignItems: 'center' }}>
-                <Box sx={{ width: '100%', maxWidth: '250px' }}>
+              {/* Image upload section */}
+              <Box sx={{ 
+                width: { xs: '100%', md: 'auto' },
+                flex: { md: 0 }, 
+                mr: { md: 2 }, 
+                display: 'flex', 
+                alignItems: 'center',
+                justifyContent: { xs: 'center', md: 'flex-start' }
+              }}>
+                <Box sx={{ 
+                  width: '100%', 
+                  maxWidth: { xs: '100%', sm: '250px' }
+                }}>
                   <HiddenInput 
                     type="file"
                     accept="image/*"
@@ -267,8 +308,8 @@ const Add: React.FC = () => {
                       />
                     ) : (
                       <>
-                        <CloudUploadIcon sx={{ color: '#ff7b00', fontSize: 32, mb: 1 }} />
-                        <Typography variant="body2" color="#ff7b00">
+                        <CloudUploadIcon sx={{ color: '#ff7b00', fontSize: { xs: 24, sm: 32 }, mb: 1 }} />
+                        <Typography variant={isMobile ? "caption" : "body2"} color="#ff7b00">
                           Subir Imagen
                         </Typography>
                         <Typography variant="caption" color="#666" sx={{ mt: 0.5 }}>
@@ -289,8 +330,15 @@ const Add: React.FC = () => {
         </Grid>
         
         {/* Bottom action button */}
-        <Grid item xs={12} sx={{ display: 'flex', justifyContent: 'flex-end', mt: 2 }}>
-          <OrangeButton>Agregar</OrangeButton>
+        
+        <Grid item xs={12} sx={{ 
+          display: 'flex', 
+          flexDirection: { xs: 'column', sm: 'row' }, 
+          justifyContent: 'right', 
+          alignItems: { xs: 'flex-end', sm: 'center' },
+          mt: 5
+        }}>
+          <OrangeButton size={isMobile ? "small" : "medium"}>Agregar</OrangeButton>
         </Grid>
       </Grid>
     </Box>

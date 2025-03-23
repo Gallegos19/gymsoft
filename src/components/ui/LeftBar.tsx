@@ -1,5 +1,16 @@
-import React, { useState } from "react";
-import { Box, Divider, List, ListItemButton, ListItemIcon, ListItemText, IconButton } from "@mui/material";
+import React, { useState, useEffect } from "react";
+import { 
+  Box, 
+  Divider, 
+  List, 
+  ListItemButton, 
+  ListItemIcon, 
+  ListItemText, 
+  IconButton,
+  Drawer,
+  useMediaQuery,
+  useTheme
+} from "@mui/material";
 import HomeIcon from "@mui/icons-material/Home";
 import PeopleIcon from "@mui/icons-material/People";
 import AssignmentIcon from "@mui/icons-material/Assignment";
@@ -10,28 +21,55 @@ import QrCodeIcon from "@mui/icons-material/QrCode";
 import LogoutIcon from "@mui/icons-material/Logout";
 import ChevronLeftIcon from "@mui/icons-material/ChevronLeft";
 import ChevronRightIcon from "@mui/icons-material/ChevronRight";
+import MenuIcon from "@mui/icons-material/Menu";
 import GroupIcon from "@mui/icons-material/Group";
 import { useNavigate, useLocation } from "react-router-dom";
+import img from "../../assets/GSOFT.avif";
 
 interface LeftBarProps {
   children: React.ReactNode;
 }
 
 const LeftBar: React.FC<LeftBarProps> = ({ children }) => {
-  const [expanded, setExpanded] = useState(false);
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+  const isTablet = useMediaQuery(theme.breakpoints.between('sm', 'md'));
+  
+  const [expanded, setExpanded] = useState(!isMobile);
+  const [mobileOpen, setMobileOpen] = useState(false);
+  
   const navigate = useNavigate();
   const location = useLocation();
 
+  useEffect(() => {
+    // Actualizar el estado expandido basado en el tamaño de la pantalla
+    if (isMobile) {
+      setExpanded(false);
+    } else if (isTablet) {
+      setExpanded(false);
+    } else {
+      setExpanded(true);
+    }
+  }, [isMobile, isTablet]);
+
   const toggleDrawer = () => {
-    setExpanded(!expanded);
+    if (isMobile) {
+      setMobileOpen(!mobileOpen);
+    } else {
+      setExpanded(!expanded);
+    }
   };
 
   const handleLogout = () => {
-    // Aquí puedes agregar la lógica para cerrar sesión
-    // Por ejemplo: limpiar localStorage, estado global, etc.
     console.log("Cerrando sesión...");
-    // Después de cerrar sesión, redirigir al login (si tienes una página de login)
-    // navigate("/login");
+    // Tu lógica de cierre de sesión aquí
+  };
+
+  const handleNavigation = (path: string) => {
+    navigate(path);
+    if (isMobile) {
+      setMobileOpen(false);
+    }
   };
 
   // Verificar si la ruta actual coincide con el path para aplicar estilo activo
@@ -46,7 +84,9 @@ const LeftBar: React.FC<LeftBarProps> = ({ children }) => {
       display: "flex", 
       justifyContent: expanded ? "flex-start" : "center",
       backgroundColor: isActive(path) ? "#212328" : "transparent",
-      "&:hover": { backgroundColor: "#212328" }
+      "&:hover": { backgroundColor: "#212328" },
+      borderRadius: '4px',
+      mx: 0.5
     };
   };
 
@@ -60,136 +100,214 @@ const LeftBar: React.FC<LeftBarProps> = ({ children }) => {
     };
   };
 
+  const drawerContent = (
+    <>
+      {/* Header */}
+      <Box sx={{ 
+        height: "64px", 
+        display: "flex", 
+        alignItems: "center", 
+        justifyContent: "space-between", 
+        padding: 2
+      }}>
+        {expanded && <Box sx={{ width: '100%' }}><img src={img} alt="Logo" style={{ width: '100%', height: 'auto' }}/></Box>}
+        <IconButton onClick={toggleDrawer} sx={{ color: "#fff", display: isMobile ? 'none' : 'flex' }}>
+          {expanded ? <ChevronLeftIcon /> : <ChevronRightIcon />}
+        </IconButton>
+      </Box>
+      <Divider sx={{ backgroundColor: "#333" }} />
+
+      {/* Navigation Items */}
+      <List sx={{ padding: '8px', flex: 1, overflow: "auto" }}>
+        <ListItemButton 
+          onClick={() => handleNavigation("/")}
+          sx={getListItemStyle("/")}
+        >
+          <ListItemIcon sx={getIconStyle("/")}>
+            <HomeIcon />
+          </ListItemIcon>
+          {(expanded || isMobile) && <ListItemText primary="Inicio" sx={{ "& .MuiListItemText-primary": { fontSize: "0.9rem" } }} />}
+        </ListItemButton>
+
+        <ListItemButton 
+          onClick={() => handleNavigation("/members")}
+          sx={getListItemStyle("/members")}
+        >
+          <ListItemIcon sx={getIconStyle("/members")}>
+            <PeopleIcon />
+          </ListItemIcon>
+          {(expanded || isMobile) && <ListItemText primary="Membresía" sx={{ "& .MuiListItemText-primary": { fontSize: "0.9rem" } }} />}
+        </ListItemButton>
+
+        <ListItemButton 
+          onClick={() => handleNavigation("/mymembers")}
+          sx={getListItemStyle("/mymembers")}
+        >
+          <ListItemIcon sx={getIconStyle("/mymembers")}>
+            <GroupIcon />
+          </ListItemIcon>
+          {(expanded || isMobile) && <ListItemText primary="Mis Miembros" sx={{ "& .MuiListItemText-primary": { fontSize: "0.9rem" } }} />}
+        </ListItemButton>
+
+        <ListItemButton 
+          onClick={() => handleNavigation("/assistance")}
+          sx={getListItemStyle("/assistance")}
+        >
+          <ListItemIcon sx={getIconStyle("/assistance")}>
+            <AssignmentIcon />
+          </ListItemIcon>
+          {(expanded || isMobile) && <ListItemText primary="Asistencia" sx={{ "& .MuiListItemText-primary": { fontSize: "0.9rem" } }} />}
+        </ListItemButton>
+
+        <ListItemButton 
+          onClick={() => handleNavigation("/add")}
+          sx={getListItemStyle("/add")}
+        >
+          <ListItemIcon sx={getIconStyle("/add")}>
+            <AddCircleIcon />
+          </ListItemIcon>
+          {(expanded || isMobile) && <ListItemText primary="Agregar" sx={{ "& .MuiListItemText-primary": { fontSize: "0.9rem" } }} />}
+        </ListItemButton>
+
+        <ListItemButton 
+          onClick={() => handleNavigation("/routines")}
+          sx={getListItemStyle("/routines")}
+        >
+          <ListItemIcon sx={getIconStyle("/routines")}>
+            <BarChartIcon />
+          </ListItemIcon>
+          {(expanded || isMobile) && <ListItemText primary="Rutinas" sx={{ "& .MuiListItemText-primary": { fontSize: "0.9rem" } }} />}
+        </ListItemButton>
+
+        <ListItemButton 
+          onClick={() => handleNavigation("/stadistics")}
+          sx={getListItemStyle("/stadistics")}
+        >
+          <ListItemIcon sx={getIconStyle("/stadistics")}>
+            <EqualizerIcon />
+          </ListItemIcon>
+          {(expanded || isMobile) && <ListItemText primary="Estadísticas" sx={{ "& .MuiListItemText-primary": { fontSize: "0.9rem" } }} />}
+        </ListItemButton>
+
+        <ListItemButton 
+          onClick={() => handleNavigation("/qr")}
+          sx={getListItemStyle("/qr")}
+        >
+          <ListItemIcon sx={getIconStyle("/qr")}>
+            <QrCodeIcon />
+          </ListItemIcon>
+          {(expanded || isMobile) && <ListItemText primary="QR" sx={{ "& .MuiListItemText-primary": { fontSize: "0.9rem" } }} />}
+        </ListItemButton>
+      </List>
+
+      {/* Logout Button - Now positioned at the bottom */}
+      <Box sx={{ marginTop: "auto", borderTop: "1px solid #333" }}>
+        <ListItemButton 
+          onClick={handleLogout}
+          sx={{ 
+            py: 1.5, 
+            display: "flex", 
+            justifyContent: expanded ? "flex-start" : "center",
+            "&:hover": { backgroundColor: "#212328" },
+            borderRadius: '4px',
+            mx: 0.5,
+            mb: 1
+          }}
+        >
+          <ListItemIcon sx={{ color: "#ccc", minWidth: expanded ? 40 : 24, ml: expanded ? 1 : "auto", mr: expanded ? 1 : "auto" }}>
+            <LogoutIcon />
+          </ListItemIcon>
+          {(expanded || isMobile) && <ListItemText primary="Cerrar sesión" sx={{ "& .MuiListItemText-primary": { fontSize: "0.9rem" } }} />}
+        </ListItemButton>
+      </Box>
+    </>
+  );
+
   return (
     <Box sx={{ display: "flex" }}>
-      <Box
-        sx={{
-          width: expanded ? 220 : 70,
-          flexShrink: 0,
-          backgroundColor: "#2A2C33",
-          color: "#fff",
-          transition: "width 0.3s",
-          height: "100vh",
-          position: "fixed",
-          overflowX: "hidden",
-          borderRight: "1px solid #333",
-          display: "flex",
-          flexDirection: "column",
-        }}
-      >
-        {/* Header */}
-        <Box sx={{ height: "64px", display: "flex", alignItems: "center", justifyContent: "space-between", padding: 2 }}>
-          {expanded && <h3>GymSoft</h3>}
-          <IconButton onClick={toggleDrawer} sx={{ color: "#fff" }}>
-            {expanded ? <ChevronLeftIcon /> : <ChevronRightIcon />}
-          </IconButton>
-        </Box>
-        <Divider sx={{ backgroundColor: "#333" }} />
-
-        {/* Navigation Items */}
-        <List sx={{ padding: 0, flex: 1, overflow: "auto" }}>
-          <ListItemButton 
-            onClick={() => navigate("/")}
-            sx={getListItemStyle("/")}
-          >
-            <ListItemIcon sx={getIconStyle("/")}>
-              <HomeIcon />
-            </ListItemIcon>
-            {expanded && <ListItemText primary="Inicio" sx={{ "& .MuiListItemText-primary": { fontSize: "0.9rem" } }} />}
-          </ListItemButton>
-
-          <ListItemButton 
-            onClick={() => navigate("/members")}
-            sx={getListItemStyle("/members")}
-          >
-            <ListItemIcon sx={getIconStyle("/members")}>
-              <PeopleIcon />
-            </ListItemIcon>
-            {expanded && <ListItemText primary="Membresía" sx={{ "& .MuiListItemText-primary": { fontSize: "0.9rem" } }} />}
-          </ListItemButton>
-
-          <ListItemButton 
-            onClick={() => navigate("/mymembers")}
-            sx={getListItemStyle("/mymembers")}
-          >
-            <ListItemIcon sx={getIconStyle("/mymembers")}>
-              <GroupIcon />
-            </ListItemIcon>
-            {expanded && <ListItemText primary="Mis Miembros" sx={{ "& .MuiListItemText-primary": { fontSize: "0.9rem" } }} />}
-          </ListItemButton>
-
-          <ListItemButton 
-            onClick={() => navigate("/assistance")}
-            sx={getListItemStyle("/assistance")}
-          >
-            <ListItemIcon sx={getIconStyle("/assistance")}>
-              <AssignmentIcon />
-            </ListItemIcon>
-            {expanded && <ListItemText primary="Asistencia" sx={{ "& .MuiListItemText-primary": { fontSize: "0.9rem" } }} />}
-          </ListItemButton>
-
-          <ListItemButton 
-            onClick={() => navigate("/add")}
-            sx={getListItemStyle("/add")}
-          >
-            <ListItemIcon sx={getIconStyle("/add")}>
-              <AddCircleIcon />
-            </ListItemIcon>
-            {expanded && <ListItemText primary="Agregar" sx={{ "& .MuiListItemText-primary": { fontSize: "0.9rem" } }} />}
-          </ListItemButton>
-
-          <ListItemButton 
-            onClick={() => navigate("/routines")}
-            sx={getListItemStyle("/routines")}
-          >
-            <ListItemIcon sx={getIconStyle("/routines")}>
-              <BarChartIcon />
-            </ListItemIcon>
-            {expanded && <ListItemText primary="Rutinas" sx={{ "& .MuiListItemText-primary": { fontSize: "0.9rem" } }} />}
-          </ListItemButton>
-
-          <ListItemButton 
-            onClick={() => navigate("/stadistics")}
-            sx={getListItemStyle("/stadistics")}
-          >
-            <ListItemIcon sx={getIconStyle("/stadistics")}>
-              <EqualizerIcon />
-            </ListItemIcon>
-            {expanded && <ListItemText primary="Estadísticas" sx={{ "& .MuiListItemText-primary": { fontSize: "0.9rem" } }} />}
-          </ListItemButton>
-
-          <ListItemButton 
-            onClick={() => navigate("/qr")}
-            sx={getListItemStyle("/qr")}
-          >
-            <ListItemIcon sx={getIconStyle("/qr")}>
-              <QrCodeIcon />
-            </ListItemIcon>
-            {expanded && <ListItemText primary="QR" sx={{ "& .MuiListItemText-primary": { fontSize: "0.9rem" } }} />}
-          </ListItemButton>
-        </List>
-
-        {/* Logout Button - Now positioned at the bottom */}
-        <Box sx={{ marginTop: "auto", borderTop: "1px solid #333" }}>
-          <ListItemButton 
-            onClick={handleLogout}
+      {/* Mobile version - temporary drawer */}
+      {isMobile && (
+        <>
+          <Box 
             sx={{ 
-              py: 1.5, 
-              display: "flex", 
-              justifyContent: expanded ? "flex-start" : "center",
-              "&:hover": { backgroundColor: "#212328" }
+              position: 'fixed', 
+              top: 0, 
+              left: 0, 
+              width: '100%', 
+              height: '64px',
+              backgroundColor: '#2A2C33',
+              zIndex: 1100,
+              display: 'flex',
+              alignItems: 'center',
+              padding: 2,
+              borderBottom: '1px solid #333'
             }}
           >
-            <ListItemIcon sx={{ color: "#ccc", minWidth: expanded ? 40 : 24, ml: expanded ? 1 : "auto", mr: expanded ? 1 : "auto" }}>
-              <LogoutIcon />
-            </ListItemIcon>
-            {expanded && <ListItemText primary="Cerrar sesión" sx={{ "& .MuiListItemText-primary": { fontSize: "0.9rem" } }} />}
-          </ListItemButton>
+            <IconButton 
+              color="inherit" 
+              aria-label="open drawer" 
+              edge="start" 
+              onClick={toggleDrawer}
+              sx={{ color: '#fff', mr: 2 }}
+            >
+              <MenuIcon />
+            </IconButton>
+            <img src={img} alt="Logo" style={{ height: '40px' }}/>
+          </Box>
+          
+          <Drawer
+            variant="temporary"
+            open={mobileOpen}
+            onClose={toggleDrawer}
+            ModalProps={{
+              keepMounted: true, // Better open performance on mobile
+            }}
+            sx={{
+              display: { xs: 'block', sm: 'none' },
+              '& .MuiDrawer-paper': { 
+                boxSizing: 'border-box', 
+                width: 240,
+                backgroundColor: "#2A2C33",
+                color: "#fff",
+              },
+            }}
+          >
+            {drawerContent}
+          </Drawer>
+        </>
+      )}
+
+      {/* Desktop and tablet version - permanent drawer */}
+      {!isMobile && (
+        <Box
+          sx={{
+            width: expanded ? 220 : 70,
+            flexShrink: 0,
+            backgroundColor: "#2A2C33",
+            color: "#fff",
+            transition: "width 0.3s",
+            height: "100vh",
+            position: "fixed",
+            overflowX: "hidden",
+            borderRight: "1px solid #333",
+            display: "flex",
+            flexDirection: "column",
+          }}
+        >
+          {drawerContent}
         </Box>
-      </Box>
+      )}
 
       {/* Main Content */}
-      <Box sx={{ flexGrow: 1, ml: expanded ? "220px" : "70px", transition: "margin-left 0.3s", padding: 3 }}>
+      <Box 
+        sx={{ 
+          flexGrow: 1, 
+          ml: isMobile ? 0 : (expanded ? "220px" : "70px"), 
+          mt: isMobile ? "64px" : 0,
+          transition: "margin-left 0.3s", 
+          padding: { xs: 2, sm: 2, md: 3 } 
+        }}
+      >
         {children}
       </Box>
     </Box>

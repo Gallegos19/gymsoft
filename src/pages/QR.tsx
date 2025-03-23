@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { 
   Typography, 
   Box, 
@@ -10,15 +10,13 @@ import {
 } from "@mui/material";
 import { styled } from '@mui/material/styles';
 import QrCodeScannerIcon from '@mui/icons-material/QrCodeScanner';
-import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import CameraAltIcon from '@mui/icons-material/CameraAlt';
-import AccessTimeIcon from '@mui/icons-material/AccessTime';
-import CardMembershipIcon from '@mui/icons-material/CardMembership';
-import PersonIcon from '@mui/icons-material/Person';
-import AccountBoxIcon from '@mui/icons-material/AccountBox';
 import CloseIcon from '@mui/icons-material/Close';
 import Header from "../components/ui/Header";
 import qr from 'assets/qr.avif';
+import UserProfile, { UserData } from "../components/ui/UserProfile"; // Importamos el nuevo componente
+
+import jsQR from "jsqr";
 
 const DarkContainer = styled(Box)({
   backgroundColor: '#161b29',
@@ -77,42 +75,6 @@ const ScannerOverlay = styled(Box)({
   alignItems: 'center',
 });
 
-const ProfileBox = styled(Paper)({
-  backgroundColor: '#1e2538',
-  padding: '20px',
-  borderRadius: '8px',
-  marginTop: '20px',
-  boxShadow: 'none',
-});
-
-const ProfileHeaderBox = styled(Box)({
-  display: 'flex',
-  justifyContent: 'space-between',
-  alignItems: 'center',
-  marginBottom: '20px',
-});
-
-const InfoRow = styled(Box)({
-  display: 'flex',
-  alignItems: 'center',
-  marginBottom: '15px',
-  '& svg': {
-    marginRight: '10px',
-    color: '#fff',
-  },
-});
-
-const UserImageBox = styled(Box)({
-  backgroundColor: '#252c41',
-  borderRadius: '8px',
-  width: '150px',
-  height: '150px',
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'center',
-  overflow: 'hidden',
-});
-
 const StopButton = styled(IconButton)({
   backgroundColor: 'rgba(255, 123, 0, 0.7)',
   color: '#fff',
@@ -129,168 +91,296 @@ const PermissionMessage = styled(Box)({
   padding: '10px'
 });
 
-const QR: React.FC = () => {
-  const [scanActive, setScanActive] = useState(false);
+// Define interface for HTML video element
+interface HTMLVideoElementWithReadyState extends HTMLVideoElement {
+  readyState: number;
+}
+
+const QR = () => {
+  // State management - fixed type errors
+  const [scanning, setScanning] = useState<boolean>(false);
+  const [loading, setLoading] = useState<boolean>(false);
+  const [error, setError] = useState<string | null>(null);
+  const [permissionDenied, setPermissionDenied] = useState<boolean>(false);
   const [scanResult, setScanResult] = useState<string | null>(null);
-  const [permissionDenied, setPermissionDenied] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [videoReady, setVideoReady] = useState(false);
   
-  const videoRef = useRef<HTMLVideoElement>(null);
+  // Refs - fixed the scanIntervalRef type to accept NodeJS.Timer
+  const videoRef = useRef<HTMLVideoElementWithReadyState | null>(null);
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
+  const scanIntervalRef = useRef<NodeJS.Timer | null>(null);
   
-  // Función para parar el stream de la cámara
-  const stopCamera = () => {
-    if (streamRef.current) {
-      const tracks = streamRef.current.getTracks();
-      tracks.forEach(track => track.stop());
-      streamRef.current = null;
-    }
-    
-    if (videoRef.current) {
-      videoRef.current.srcObject = null;
-    }
-    
-    setScanActive(false);
-    setVideoReady(false);
+  const currentDate = new Date().toLocaleDateString('es-ES', {
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric'
+  });
+
+  // Función para agregar información de depuración
+  const addDebugInfo = (info: string) => {
+    console.log(`DEBUG: ${info}`);
   };
 
-  // Función para comprobar si el navegador permite la API de MediaDevices
-  const checkMediaDevicesSupport = () => {
-    return !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia);
-  };
-
-  // Asegura que el elemento de video esté renderizado antes de intentar acceder a él
+  // Debugging useEffect to track state changes
   useEffect(() => {
-    if (scanActive) {
-      // Dar tiempo para que el video se renderice
-      const timer = setTimeout(() => {
-        setVideoReady(!!videoRef.current);
-      }, 300);
-      return () => clearTimeout(timer);
-    }
-  }, [scanActive]);
+    console.log("Estado actual:", { scanning, loading, permissionDenied, error });
+    addDebugInfo(`Estado: scanning=${scanning}, loading=${loading}, denied=${permissionDenied}, error=${error}`);
+  }, [scanning, loading, permissionDenied, error]);
 
-  // Función para activar la cámara
-  const activateCamera = async () => {
-    setIsLoading(true);
+  // Function to start the scanner
+  const startScanner = async (): Promise<void> => {
+    // Reset states - ensure all states are properly reset
+    setLoading(true);
+    setError(null);
     setPermissionDenied(false);
-    setErrorMessage(null);
+    setScanResult(null);
+    setScanning(false);
     
-    // Primero, activamos el contenedor de video para que se renderice
-    setScanActive(true);
+    addDebugInfo("Iniciando scanner...");
     
-    // Verificar soporte para mediaDevices
-    if (!checkMediaDevicesSupport()) {
-      setErrorMessage("Tu navegador no soporta acceso a la cámara");
-      setIsLoading(false);
+    // Stop any existing scanner/stream to ensure clean start
+    stopScanner();
+    
+    // Check if MediaDevices API is supported
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      addDebugInfo("API MediaDevices no soportada");
+      setError("Tu navegador no soporta acceso a la cámara");
+      setLoading(false);
+      return;
+    }
+
+    // Make sure videoRef is initialized before requesting camera
+    if (!videoRef.current) {
+      addDebugInfo("videoRef not initialized, aborting");
+      setError("Error al inicializar el elemento de video");
+      setLoading(false);
       return;
     }
     
     try {
-      // Esperar a que el elemento de video esté disponible
-      setTimeout(async () => {
-        if (!videoRef.current) {
-          setErrorMessage("No se pudo acceder al elemento de video");
-          setIsLoading(false);
+      addDebugInfo("Solicitando acceso a la cámara...");
+      // Request camera access
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { 
+          facingMode: 'environment',
+          width: { ideal: 1280 },
+          height: { ideal: 720 }
+        }
+      });
+      
+      addDebugInfo("Acceso a la cámara concedido");
+      addDebugInfo(`Stream tracks: ${stream.getTracks().length}, enabled: ${stream.getTracks()[0].enabled}`);
+      
+      // Store stream reference
+      streamRef.current = stream;
+      
+      // Set video source
+      if (videoRef.current) {
+        addDebugInfo("Asignando stream al elemento video");
+        videoRef.current.srcObject = stream;
+        
+        // Verificar si el video tiene dimensiones
+        addDebugInfo(`Video ref: ${videoRef.current ? "existe" : "no existe"}`);
+        addDebugInfo(`Video dimensions: ${videoRef.current.videoWidth}x${videoRef.current.videoHeight}`);
+        
+        // Wait for video to be ready
+        videoRef.current.onloadedmetadata = () => {
+          addDebugInfo("Video metadata loaded");
+          if (videoRef.current) {
+            addDebugInfo(`Video readyState: ${videoRef.current.readyState}`);
+            addDebugInfo(`Video dimensions after metadata: ${videoRef.current.videoWidth}x${videoRef.current.videoHeight}`);
+            
+            videoRef.current.play()
+              .then(() => {
+                addDebugInfo("Video reproduciendo correctamente");
+                addDebugInfo(`Video playing: ${!videoRef.current?.paused}, muted: ${videoRef.current?.muted}`);
+                setLoading(false);
+                setScanning(true);
+                startQRDetection();
+              })
+              .catch((err: Error) => {
+                addDebugInfo(`Error playing video: ${err.name} - ${err.message}`);
+                console.error('Error playing video:', err);
+                setError(`Error al iniciar la cámara: ${err.message}`);
+                stopScanner();
+                setLoading(false);
+              });
+          } else {
+            addDebugInfo("Video ref se volvió nulo después de cargar metadata");
+          }
+        };
+        
+        // Agregar manejadores de eventos para detectar posibles problemas
+        videoRef.current.oncanplay = () => addDebugInfo("Evento: Video can play");
+        videoRef.current.oncanplaythrough = () => addDebugInfo("Evento: Video can play through");
+        videoRef.current.onerror = (e) => addDebugInfo(`Evento: Video error: ${videoRef.current?.error?.code}`);
+        videoRef.current.onstalled = () => addDebugInfo("Evento: Video stalled");
+        videoRef.current.onsuspend = () => addDebugInfo("Evento: Video suspended");
+      } else {
+        addDebugInfo("ERROR: videoRef.current es nulo");
+        setError("Error al inicializar el elemento de video");
+        stopScanner();
+        setLoading(false);
+      }
+    } catch (err) {
+      console.error('Error accessing camera:', err);
+      
+      // Handle different error types
+      const error = err as Error & { name?: string };
+      
+      addDebugInfo(`Camera access error: ${error.name} - ${error.message}`);
+      
+      if (error.name === 'NotAllowedError' || error.name === 'PermissionDeniedError') {
+        addDebugInfo("Permiso de cámara denegado");
+        setPermissionDenied(true);
+        setError("Permiso para usar la cámara denegado");
+      } else if (error.name === 'NotFoundError') {
+        setError("No se encontró ninguna cámara en este dispositivo");
+      } else if (error.name === 'NotReadableError' || error.name === 'AbortError') {
+        setError("La cámara está siendo utilizada por otra aplicación");
+      } else {
+        setError(`Error al acceder a la cámara: ${error.message || 'Error desconocido'}`);
+      }
+      
+      stopScanner();
+      setLoading(false);
+    }
+  };
+  
+  // Function to stop the scanner
+  const stopScanner = (): void => {
+    addDebugInfo("Deteniendo scanner...");
+    // Stop QR detection interval
+    if (scanIntervalRef.current) {
+      clearInterval(scanIntervalRef.current);
+      scanIntervalRef.current = null;
+      addDebugInfo("Intervalo de escaneo detenido");
+    }
+    
+    // Stop all camera tracks
+    if (streamRef.current) {
+      const tracks = streamRef.current.getTracks();
+      addDebugInfo(`Deteniendo ${tracks.length} tracks de cámara`);
+      tracks.forEach((track) => {
+        addDebugInfo(`Deteniendo track: ${track.kind}, enabled: ${track.enabled}`);
+        track.stop();
+      });
+      streamRef.current = null;
+    } else {
+      addDebugInfo("No hay stream para detener");
+    }
+    
+    // Reset video element
+    if (videoRef.current) {
+      addDebugInfo("Reseteando elemento de video");
+      videoRef.current.srcObject = null;
+    } else {
+      addDebugInfo("No hay video ref para resetear");
+    }
+    
+    // Update scanning state
+    setScanning(false);
+  };
+  
+  // Function to detect QR codes in video
+  const startQRDetection = (): void => {
+    addDebugInfo("Iniciando detección de QR...");
+    // Create canvas for frame analysis if it doesn't exist
+    if (!canvasRef.current) {
+      const canvas = document.createElement('canvas');
+      canvasRef.current = canvas;
+      addDebugInfo("Canvas creado para detección");
+    }
+    
+    // Set up scanning interval (analyze frames every 200ms - increased to reduce CPU usage)
+    const intervalId = setInterval(() => {
+      if (videoRef.current && videoRef.current.readyState === videoRef.current.HAVE_ENOUGH_DATA && canvasRef.current) {
+        // Get video dimensions
+        const videoWidth = videoRef.current.videoWidth;
+        const videoHeight = videoRef.current.videoHeight;
+        
+        if (videoWidth === 0 || videoHeight === 0) {
+          addDebugInfo(`Dimensiones de video inválidas: ${videoWidth}x${videoHeight}`);
           return;
         }
         
-        try {
-          // Solicitar permisos para usar la cámara
-          console.log("Solicitando acceso a la cámara...");
-          const stream = await navigator.mediaDevices.getUserMedia({
-            video: { facingMode: 'environment' } // Usar cámara trasera si está disponible
-          });
-          
-          console.log("Acceso a la cámara concedido");
-          
-          // Verificar si el componente sigue montado
-          if (!videoRef.current) {
-            // El componente se desmontó mientras esperábamos
-            stream.getTracks().forEach(track => track.stop());
-            return;
-          }
-          
-          // Guardar referencia al stream para poder detenerlo después
-          streamRef.current = stream;
-          
-          // Asignar el stream al video
-          videoRef.current.srcObject = stream;
-          
-          // Manejar la reproducción del video
-          videoRef.current.onloadedmetadata = () => {
-            if (videoRef.current) {
-              videoRef.current.play()
-                .then(() => {
-                  console.log("Video iniciado correctamente");
-                  setIsLoading(false);
-                  setVideoReady(true);
-                })
-                .catch(err => {
-                  console.error("Error al iniciar reproducción:", err);
-                  setErrorMessage("Error al iniciar la cámara: " + err.message);
-                  stopCamera();
-                  setIsLoading(false);
-                });
+        // Set canvas dimensions to match video
+        canvasRef.current.width = videoWidth;
+        canvasRef.current.height = videoHeight;
+        
+        // Draw current video frame to canvas
+        const ctx = canvasRef.current.getContext('2d');
+        if (ctx && videoRef.current) {
+          try {
+            ctx.drawImage(videoRef.current as unknown as CanvasImageSource, 0, 0, videoWidth, videoHeight);
+            
+            // Get image data for QR code analysis
+            const imageData = ctx.getImageData(0, 0, videoWidth, videoHeight);
+            
+            // Attempt to detect QR code in frame
+            const qrCode = jsQR(imageData.data, imageData.width, imageData.height, {
+              inversionAttempts: "dontInvert",
+            });
+            
+            // If QR code found
+            if (qrCode) {
+              addDebugInfo(`QR code detected: ${qrCode.data.substring(0, 20)}...`);
+              // Stop scanning
+              stopScanner();
+              
+              // Process QR code data
+              processQRResult(qrCode.data);
             }
-          };
-        } catch (error: any) {
-          console.error('Error al acceder a la cámara:', error);
-          
-          // Manejar diferentes tipos de errores
-          if (error.name === 'NotAllowedError' || error.name === 'PermissionDeniedError') {
-            setPermissionDenied(true);
-            setErrorMessage("Permiso para usar la cámara denegado. Por favor, permite el acceso desde la configuración de tu navegador.");
-          } else if (error.name === 'NotFoundError') {
-            setErrorMessage("No se encontró ninguna cámara en este dispositivo");
-          } else if (error.name === 'NotReadableError' || error.name === 'AbortError') {
-            setErrorMessage("La cámara está siendo utilizada por otra aplicación");
-          } else {
-            setErrorMessage(`Error al acceder a la cámara: ${error.message || 'Error desconocido'}`);
+          } catch (error) {
+            const err = error as Error;
+            addDebugInfo(`Error en detección de QR: ${err.message}`);
+            console.error("QR detection error:", error);
           }
-          
-          stopCamera();
-          setIsLoading(false);
         }
-      }, 500);
-      
-      // Timeout de seguridad
-      setTimeout(() => {
-        if (isLoading) {
-          setIsLoading(false);
+      } else {
+        // Log the video readiness state
+        if (videoRef.current) {
+          const readyState = videoRef.current.readyState;
+          const readyStateText = ['HAVE_NOTHING', 'HAVE_METADATA', 'HAVE_CURRENT_DATA', 'HAVE_FUTURE_DATA', 'HAVE_ENOUGH_DATA'][readyState] || 'UNKNOWN';
+          addDebugInfo(`Video no listo para detección. readyState: ${readyState} (${readyStateText})`);
+        } else {
+          addDebugInfo("VideoRef es nulo durante la detección");
         }
-      }, 5000);
-      
-    } catch (error: any) {
-      console.error('Error inesperado:', error);
-      setErrorMessage(`Error inesperado: ${error.message || 'Error desconocido'}`);
-      stopCamera();
-      setIsLoading(false);
-    }
+      }
+    }, 200); // Increased from 100ms to 200ms
+    
+    addDebugInfo("Intervalo de escaneo QR iniciado");
+    scanIntervalRef.current = intervalId;
   };
-
-  // Limpiar recursos cuando el componente se desmonta
+  
+  // Process QR code result - fixed type annotation
+  const processQRResult = (result: string): void => {
+    addDebugInfo(`Procesando resultado QR: ${result.substring(0, 20)}...`);
+    setScanResult(result);
+  };
+  
+  // Cleanup effect
   useEffect(() => {
+    addDebugInfo("Componente montado");
     return () => {
-      stopCamera();
+      addDebugInfo("Componente desmontado - limpiando recursos");
+      stopScanner();
     };
   }, []);
-
-  // Función para procesar el resultado del escaneo (puedes implementarla cuando necesites procesar QR)
-  const processQRResult = (result: string) => {
-    setScanResult(result);
-    stopCamera();
-    // Implementar la lógica para procesar el resultado del QR
+  
+  // Mock user data for demo
+  const userData: UserData = {
+    name: "Juan Perez",
+    age: "18 años",
+    membershipType: "Normal",
+    entryTime: "3:00 pm",
+    exitTime: "6:00 pm",
+    active: true
   };
-
-  const currentDate = "15 de Febrero del 2025";
   
   return (
     <DarkContainer>
       <Grid container spacing={2}>
-        {/* Header section */}
         <Grid item xs={12}>
           <Header gymName="NOMBRE DEL GYM" />
         </Grid>
@@ -311,202 +401,129 @@ const QR: React.FC = () => {
           </Box>
         </Grid>
         
-        {/* QR Scanner Box */}
-        <Grid item xs={12}>
-          <QRCodeBox onClick={!scanActive && !isLoading ? activateCamera : undefined}>
-            {isLoading ? (
-              <Box display="flex" flexDirection="column" alignItems="center">
-                <CircularProgress sx={{ color: '#ff7b00' }} />
-                <Typography variant="body2" color="#fff" mt={2}>
-                  Solicitando acceso a la cámara...
-                </Typography>
-              </Box>
-            ) : scanActive ? (
-              <VideoContainer>
-                {/* Renderizar siempre el video cuando scanActive es true */}
-                <video 
-                  ref={videoRef} 
-                  style={{ 
-                    width: '100%', 
-                    height: '100%', 
-                    objectFit: 'cover',
-                    display: 'block',
-                  }} 
-                  autoPlay 
-                  playsInline
-                  muted
-                />
-                <ScannerOverlay>
-                  <QrCodeScannerIcon sx={{ color: 'rgba(255, 255, 255, 0.5)', fontSize: 40 }} />
-                </ScannerOverlay>
-                <OverlayControls>
-                  <StopButton size="small" onClick={(e) => {
-                    e.stopPropagation();
-                    stopCamera();
-                  }}>
-                    <CloseIcon fontSize="small" />
-                  </StopButton>
-                </OverlayControls>
-              </VideoContainer>
-            ) : permissionDenied ? (
-              <PermissionMessage>
-                <Typography variant="body2" color="#ff7b00" mb={2}>
-                  Acceso a la cámara denegado
-                </Typography>
-                <Typography variant="caption" color="#aaa" mb={2}>
-                  Por favor permite el acceso a la cámara en la configuración de tu navegador
-                </Typography>
-                <Button 
-                  variant="contained" 
-                  size="small"
-                  sx={{ 
-                    backgroundColor: '#ff7b00',
-                    '&:hover': { backgroundColor: '#e67000' }
-                  }}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    activateCamera();
-                  }}
-                >
-                  Reintentar
-                </Button>
-              </PermissionMessage>
-            ) : errorMessage ? (
-              <PermissionMessage>
-                <Typography variant="body2" color="#ff7b00" mb={1}>
-                  Error
-                </Typography>
-                <Typography variant="caption" color="#aaa" mb={2}>
-                  {errorMessage}
-                </Typography>
-                <Button 
-                  variant="contained" 
-                  size="small"
-                  sx={{ 
-                    backgroundColor: '#ff7b00',
-                    '&:hover': { backgroundColor: '#e67000' }
-                  }}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    activateCamera();
-                  }}
-                >
-                  Reintentar
-                </Button>
-              </PermissionMessage>
-            ) : (
-              <Box 
-                component="img" 
-                src={qr}
-                alt="Código QR" 
-                sx={{ 
-                  width: '80%', 
-                  height: '80%',
-                  filter: 'invert(1)',
-                }}
+        {/* Layout horizontal: QR a la izquierda, datos a la derecha */}
+        <Grid container item spacing={3}>
+          {/* QR Scanner Box - Lado izquierdo */}
+          <Grid item xs={12} md={5} lg={4}>
+            <QRCodeBox onClick={!scanning && !loading ? startScanner : undefined}>
+              <video 
+                ref={videoRef as React.RefObject<HTMLVideoElement>} 
+                style={{ 
+                  width: '100%', 
+                  height: '100%', 
+                  objectFit: 'cover',
+                  position: 'absolute',
+                  top: 0,
+                  left: 0,
+                  display: scanning ? 'block' : 'none', 
+                }} 
+                autoPlay 
+                playsInline
+                muted
               />
+              
+              {loading ? (
+                // Loading state
+                <Box display="flex" flexDirection="column" alignItems="center">
+                  <CircularProgress sx={{ color: '#ff7b00' }} />
+                  <Typography variant="body2" color="#fff" mt={2}>
+                    Solicitando acceso a la cámara...
+                  </Typography>
+                </Box>
+              ) : scanning ? (
+                // Active scanning state
+                <VideoContainer>
+                  <ScannerOverlay>
+                    <QrCodeScannerIcon sx={{ color: 'rgba(255, 255, 255, 0.5)', fontSize: 40 }} />
+                  </ScannerOverlay>
+                  <OverlayControls>
+                    <StopButton size="small" onClick={(e) => {
+                      e.stopPropagation();
+                      stopScanner();
+                    }}>
+                      <CloseIcon fontSize="small" />
+                    </StopButton>
+                  </OverlayControls>
+                </VideoContainer>
+              ) : permissionDenied ? (
+                // Permission denied state
+                <PermissionMessage>
+                  <Typography variant="body2" color="#ff7b00" mb={2}>
+                    Acceso a la cámara denegado
+                  </Typography>
+                  <Typography variant="caption" color="#aaa" mb={2}>
+                    Por favor permite el acceso a la cámara en la configuración de tu navegador
+                  </Typography>
+                  <Button 
+                    variant="contained" 
+                    size="small"
+                    sx={{ 
+                      backgroundColor: '#ff7b00',
+                      '&:hover': { backgroundColor: '#e67000' }
+                    }}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      // Reinicia todos los estados para intentar nuevamente
+                      setPermissionDenied(false);
+                      setError(null);
+                      setTimeout(() => startScanner(), 100);
+                    }}
+                  >
+                    Reintentar
+                  </Button>
+                </PermissionMessage>
+              ) : error ? (
+                // Error state
+                <PermissionMessage>
+                  <Typography variant="body2" color="#ff7b00" mb={1}>
+                    Error
+                  </Typography>
+                  <Typography variant="caption" color="#aaa" mb={2}>
+                    {error}
+                  </Typography>
+                  <Button 
+                    variant="contained" 
+                    size="small"
+                    sx={{ 
+                      backgroundColor: '#ff7b00',
+                      '&:hover': { backgroundColor: '#e67000' }
+                    }}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      // Reinicia todos los estados para intentar nuevamente
+                      setError(null);
+                      setTimeout(() => startScanner(), 100);
+                    }}
+                  >
+                    Reintentar
+                  </Button>
+                </PermissionMessage>
+              ) : (
+                // Default state - QR icon
+                <Box 
+                  component="img" 
+                  src={qr}
+                  alt="Código QR" 
+                  sx={{ 
+                    width: '80%', 
+                    height: '80%',
+                    filter: 'invert(1)',
+                  }}
+                />
+              )}
+            </QRCodeBox>
+            {!scanning && !loading && !permissionDenied && !error && (
+              <Typography textAlign="center" variant="body2" color="#999" mt={2}>
+                Haz clic en el código QR para escanear
+              </Typography>
             )}
-          </QRCodeBox>
-          {!scanActive && !isLoading && !permissionDenied && !errorMessage && (
-            <Typography textAlign="center" variant="body2" color="#999" mt={2}>
-              Haz clic en el código QR para escanear
-            </Typography>
-          )}
+          </Grid>
+          
+          {/* Información del usuario - Lado derecho */}
+          <Grid item xs={12} md={7} lg={8}>
+            <UserProfile userData={userData} />
+          </Grid>
         </Grid>
-        
-        {/* Mostramos información del usuario si hay un resultado del escaneo */}
-        {scanResult && (
-          <Grid item xs={12}>
-            <ProfileBox>
-              <ProfileHeaderBox>
-                <Box flex={1}>
-                  <UserImageBox>
-                    <AccountBoxIcon sx={{ fontSize: 80, color: '#fff' }} />
-                  </UserImageBox>
-                </Box>
-                <Box flex={1} textAlign="right">
-                  <Typography fontWeight="bold" sx={{color: '#fff'}}>Membresía</Typography>
-                  <Box display="flex" alignItems="center" justifyContent="flex-end" mt={1}>
-                    <Typography color="#fff">Activa</Typography>
-                    <CheckCircleIcon sx={{ color: '#4caf50', ml: 1 }} />
-                  </Box>
-                </Box>
-              </ProfileHeaderBox>
-              
-              <InfoRow>
-                <PersonIcon />
-                <Typography sx={{color: '#fff'}}>Juan Perez</Typography>
-              </InfoRow>
-              
-              <InfoRow>
-                <PersonIcon />
-                <Typography sx={{color: '#fff'}}>18 años</Typography>
-              </InfoRow>
-              
-              <InfoRow>
-                <CardMembershipIcon />
-                <Typography sx={{color: '#fff'}}>Tipo de membresía: Normal</Typography>
-              </InfoRow>
-              
-              <InfoRow>
-                <AccessTimeIcon />
-                <Typography sx={{color: '#fff'}}>Entrada: 3:00 pm</Typography>
-              </InfoRow>
-              
-              <InfoRow sx={{ mb: 0 }}>
-                <AccessTimeIcon />
-                <Typography sx={{color: '#fff'}}>Salida: 6:00 pm</Typography>
-              </InfoRow>
-            </ProfileBox>
-          </Grid>
-        )}
-        
-        {/* Para fines de demo, mostramos la información del usuario */}
-        {!scanResult && (
-          <Grid item xs={12}>
-            <ProfileBox>
-              <ProfileHeaderBox>
-                <Box flex={1}>
-                  <UserImageBox>
-                    <AccountBoxIcon sx={{ fontSize: 80, color: '#fff' }} />
-                  </UserImageBox>
-                </Box>
-                <Box flex={1} textAlign="right">
-                  <Typography fontWeight="bold" sx={{color: '#fff'}}>Membresía</Typography>
-                  <Box display="flex" alignItems="center" justifyContent="flex-end" mt={1}>
-                    <Typography color="#fff">Activa</Typography>
-                    <CheckCircleIcon sx={{ color: '#4caf50', ml: 1 }} />
-                  </Box>
-                </Box>
-              </ProfileHeaderBox>
-              
-              <InfoRow>
-                <PersonIcon />
-                <Typography sx={{color: '#fff'}}>Juan Perez</Typography>
-              </InfoRow>
-              
-              <InfoRow>
-                <PersonIcon />
-                <Typography sx={{color: '#fff'}}>18 años</Typography>
-              </InfoRow>
-              
-              <InfoRow>
-                <CardMembershipIcon />
-                <Typography sx={{color: '#fff'}}>Tipo de membresía: Normal</Typography>
-              </InfoRow>
-              
-              <InfoRow>
-                <AccessTimeIcon />
-                <Typography sx={{color: '#fff'}}>Entrada: 3:00 pm</Typography>
-              </InfoRow>
-              
-              <InfoRow sx={{ mb: 0 }}>
-                <AccessTimeIcon />
-                <Typography sx={{color: '#fff'}}>Salida: 6:00 pm</Typography>
-              </InfoRow>
-            </ProfileBox>
-          </Grid>
-        )}
       </Grid>
     </DarkContainer>
   );
