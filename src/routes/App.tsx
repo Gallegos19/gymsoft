@@ -2,6 +2,9 @@
 import React from "react";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import MainLayout from "../components/layout/MainLayout";
+import AllPages from "../pages/AllPages";
+import PrivacyPolicies from "../pages/PrivacyPolicies";
+import Us from "../pages/Us";
 
 import HomePage from "../pages/HomePage";
 import Members from "pages/Members";
@@ -29,6 +32,9 @@ function App() {
       <Routes>
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
+        <Route path="/" element={<AllPages />} />
+          <Route path="/privacy-policies" element={<PrivacyPolicies />} /> 
+          <Route path="/us" element={<Us />} /> 
 
         {/* Rutas con MainLayout */}
         <Route element={<MainLayoutWrapper />}>
