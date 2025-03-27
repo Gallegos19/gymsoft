@@ -11,6 +11,7 @@ import {
   useMediaQuery,
   useTheme
 } from "@mui/material";
+import CardMembershipIcon from '@mui/icons-material/CardMembership';
 import HomeIcon from "@mui/icons-material/Home";
 import PeopleIcon from "@mui/icons-material/People";
 import AssignmentIcon from "@mui/icons-material/Assignment";
@@ -145,9 +146,9 @@ const LeftBar: React.FC<LeftBarProps> = ({ children }) => {
           sx={getListItemStyle("/mymembers")}
         >
           <ListItemIcon sx={getIconStyle("/mymembers")}>
-            <GroupIcon />
+            <CardMembershipIcon />
           </ListItemIcon>
-          {(expanded || isMobile) && <ListItemText primary="Mis Miembros" sx={{ "& .MuiListItemText-primary": { fontSize: "0.9rem" } }} />}
+          {(expanded || isMobile) && <ListItemText primary="Mis Planes" sx={{ "& .MuiListItemText-primary": { fontSize: "0.9rem" } }} />}
         </ListItemButton>
 
         <ListItemButton 

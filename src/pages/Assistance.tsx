@@ -1,12 +1,11 @@
-import React, { useState, useEffect } from "react";
-import { 
-  Typography, 
-  Box, 
-  Grid, 
-  Paper, 
+import React, { useState, useEffect, useCallback } from "react";
+import {
+  Typography,
+  Box,
+  Grid,
+  Paper,
   Avatar,
   IconButton,
-  TextField,
   InputAdornment,
   Table,
   TableBody,
@@ -15,7 +14,8 @@ import {
   TableHead,
   TableRow,
   useMediaQuery,
-  useTheme
+  useTheme, 
+  GlobalStyles
 } from "@mui/material";
 import CalendarTodayIcon from '@mui/icons-material/CalendarToday';
 import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
@@ -23,8 +23,22 @@ import ChevronRightIcon from '@mui/icons-material/ChevronRight';
 import Header from "../components/ui/Header";
 import { styled } from '@mui/material/styles';
 import img from '../assets/young-muscular-woman-practicing-gym (1).jpg';
+import { StorageService } from "../core/services/StorageService";
+import GetAssistance, { GetAssistanceResponse, Assistance as AssistanceData } from "../api/clients/GetAssistance";
+import GetUserById from "../api/clients/GetUserById";
+import DatePicker from "react-datepicker";
+import "react-datepicker/dist/react-datepicker.css";
+import { es } from 'date-fns/locale';
+import { format } from 'date-fns';
 
-// Styled components
+interface RecordWithUser {
+  id: string;
+  name: string;
+  entryTime: string;
+  exitTime: string;
+  photo: string;
+}
+
 const DarkPaper = styled(Paper)(({ theme }) => ({
   backgroundColor: '#1a1e2a',
   color: '#fff',
@@ -35,15 +49,14 @@ const DarkPaper = styled(Paper)(({ theme }) => ({
   flexDirection: 'column',
 }));
 
-// Fixed scrollable container for the table with responsive adjustments
 const ScrollableTableContainer = styled(TableContainer)(({ theme }) => ({
   flex: '1 1 auto',
   maxHeight: '250px',
   overflowY: 'auto',
-  overflowX: 'auto', // Added horizontal scroll for mobile
+  overflowX: 'auto',
   '&::-webkit-scrollbar': {
     width: '8px',
-    height: '8px', // Added height for horizontal scrollbar
+    height: '8px',
   },
   '&::-webkit-scrollbar-track': {
     background: '#2a2e3a',
@@ -58,11 +71,10 @@ const ScrollableTableContainer = styled(TableContainer)(({ theme }) => ({
   },
   marginBottom: theme.spacing(1),
   [theme.breakpoints.down('sm')]: {
-    maxHeight: '200px', // Reduced height for mobile
+    maxHeight: '200px',
   }
 }));
 
-// Responsive table cells
 const StyledTableCell = styled(TableCell)(({ theme }) => ({
   color: '#fff',
   borderBottom: '1px solid #2a2e3a',
@@ -70,7 +82,7 @@ const StyledTableCell = styled(TableCell)(({ theme }) => ({
   [theme.breakpoints.down('sm')]: {
     padding: '8px 4px',
     fontSize: '0.75rem',
-    minWidth: '60px', // Ensure minimum width for content
+    minWidth: '60px',
   }
 }));
 
@@ -87,7 +99,7 @@ const StyledTableHeaderCell = styled(TableCell)(({ theme }) => ({
   [theme.breakpoints.down('sm')]: {
     padding: '6px 4px',
     fontSize: '0.75rem',
-    minWidth: '60px', // Ensure minimum width for header
+    minWidth: '60px',
   }
 }));
 
@@ -102,225 +114,157 @@ const PageButton = styled(IconButton)({
   height: 32,
 });
 
-const DateInput = styled(TextField)(({ theme }) => ({
-  '& .MuiOutlinedInput-root': {
-    color: '#fff',
-    backgroundColor: '#1a1e2a',
-    borderRadius: 4,
-    '& fieldset': {
-      borderColor: '#2a2e3a',
-    },
-    '&:hover fieldset': {
-      borderColor: '#3a3e4a',
-    },
-    '&.Mui-focused fieldset': {
-      borderColor: '#ff7b00',
-    },
+const CustomDatePickerWrapper = styled("div")(({ theme }) => ({
+  width: '100%',
+  maxWidth: '250px',
+  '.react-datepicker-wrapper': {
+    width: '100%'
   },
-  '& .MuiInputAdornment-root': {
-    color: '#ff7b00',
-  },
-  [theme.breakpoints.down('sm')]: {
+  '.react-datepicker__input-container input': {
     width: '100%',
-    maxWidth: '250px',
+    padding: '8px 12px',
+    borderRadius: '4px',
+    backgroundColor: '#1a1e2a',
+    border: '1px solid #2a2e3a',
+    color: '#fff',
+    fontSize: '0.9rem',
+    outline: 'none',
+    '&:focus': {
+      borderColor: '#ff7b00',
+    }
   }
 }));
 
-// Sample data for the table
-const attendanceData = [
-  { id: 1, name: "Juan Perez", entryTime: "9:00 am", exitTime: "12:00 pm" },
-  { id: 2, name: "Ana Lopez", entryTime: "10:30 am", exitTime: "1:45 pm" },
-  { id: 3, name: "Carlos Gomez", entryTime: "8:15 am", exitTime: "11:30 am" },
-  { id: 4, name: "Maria Rodriguez", entryTime: "2:00 pm", exitTime: "4:30 pm" },
-  { id: 5, name: "Roberto Sanchez", entryTime: "7:45 am", exitTime: "10:15 am" },
-  { id: 6, name: "Laura Torres", entryTime: "3:30 pm", exitTime: "6:00 pm" },
-  { id: 7, name: "Fernando Martinez", entryTime: "1:15 pm", exitTime: "3:45 pm" },
-  { id: 8, name: "Patricia Diaz", entryTime: "11:00 am", exitTime: "2:30 pm" }
-];
-
 const Assistance: React.FC = () => {
-  const [currentDate, setCurrentDate] = useState("10/01/2025");
+  const [currentDate, setCurrentDate] = useState<Date | null>(new Date());
+  const [visibleRecords, setVisibleRecords] = useState<RecordWithUser[]>([]);
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
-  const isTablet = useMediaQuery(theme.breakpoints.down('md'));
-  
-  const [visibleRecords, setVisibleRecords] = useState(attendanceData);
 
-  // Calculate avatar size based on screen size
+  const storage = StorageService.getInstance();
+  const token = storage.getItem("auth_token");
+  const id_gimnasio_raw = storage.getItem("id_gimnasios");
+  const id_gimnasio = Number(id_gimnasio_raw);
+
+  const fetchData = useCallback(async (date: Date) => {
+    if (!token || !id_gimnasio || !date) return;
+
+    try {
+      const formattedDate = format(date, 'yyyy-MM-dd');
+      const response: GetAssistanceResponse = await GetAssistance.getAllAssistance(id_gimnasio, formattedDate, token);
+      console.log(response);
+      if (Array.isArray(response.data)) {
+        
+        const enrichedRecords: RecordWithUser[] = [];
+
+        for (const asistencia of response.data) {
+          const userData = await GetUserById.getUser(Number(asistencia.id_user), token);
+          console.log(userData);
+
+          if (userData) {
+            enrichedRecords.push({
+              id: asistencia.id_user,
+              name: `${userData.name} ${userData.last_name}`,
+              entryTime: asistencia.entrada,
+              exitTime: asistencia.salida,
+              photo: userData.photo
+            });
+          }
+        }
+
+        setVisibleRecords(enrichedRecords);
+      }
+    } catch (error) {
+      console.error("Error al cargar asistencias con usuarios:", error);
+    }
+  }, [token, id_gimnasio]);
+
+  useEffect(() => {
+    if (currentDate) fetchData(currentDate);
+  }, [currentDate, fetchData]);
+
   const avatarSize = isMobile ? 20 : 32;
 
   return (
-    <Box sx={{ 
-      display: 'flex', 
-      minHeight: '80vh', 
-      backgroundColor: '#12151f', 
-      color: '#fff', 
-      p: { xs: 1, sm: 2 }
-    }}>
+    <>
+    
+    <GlobalStyles styles={{ '.react-datepicker-popper': { zIndex: 9999 } }} />
+    <Box sx={{ display: 'flex', minHeight: '80vh', backgroundColor: '#12151f', color: '#fff', p: { xs: 1, sm: 2 } }}>
       <Grid container spacing={{ xs: 1, sm: 2 }}>
-        {/* Header section */}
-        <Grid item xs={12}>
-          <Header gymName="NOMBRE DEL GYM" />
-        </Grid>
+        <Grid item xs={12}><Header/></Grid>
 
-        {/* Title */}
         <Grid item xs={12}>
-          <Typography 
-            variant={isMobile ? "subtitle1" : "h6"} 
-            color="#ff7b00"
-            sx={{ pl: { xs: 1, sm: 0 } }}
-          >
+          <Typography variant={isMobile ? "subtitle1" : "h6"} color="#ff7b00" sx={{ pl: { xs: 1, sm: 0 } }}>
             Registro de Asistencias
           </Typography>
         </Grid>
 
-        {/* Main content */}
         <Grid item xs={12}>
           <Grid container spacing={{ xs: 1, sm: 2 }}>
-            {/* Content order changes in mobile: image first, then table */}
             {isMobile && (
               <Grid item xs={12}>
-                <Box 
-                  sx={{ 
-                    height: '150px', 
-                    borderRadius: 2, 
-                    overflow: 'hidden', 
-                    mb: 1,
-                  }}
-                >
-                  <Box 
-                    component="img"
-                    src={img}
-                    alt="Gym workout"
-                    sx={{ 
-                      width: '100%', 
-                      height: '100%', 
-                      objectFit: 'cover',
-                      borderRadius: 2
-                    }}
-                  />
+                <Box sx={{ height: '150px', borderRadius: 2, overflow: 'hidden', mb: 1 }}>
+                  <Box component="img" src={img} alt="Gym workout" sx={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 2 }} />
                 </Box>
               </Grid>
             )}
-            
-            {/* Left section - Attendance list */}
-            <Grid item xs={12} md={7} order={{ xs: 2, md: 0 }}>
-              <DarkPaper sx={{ 
-                p: { xs: 1, sm: 2 },
-                height: { xs: 'auto', sm: '100%' }
-              }}>
-                {/* Date selector */}
-                <Box sx={{ 
-                  display: 'flex', 
-                  justifyContent: 'center', 
-                  mb: { xs: 1, sm: 2 },
-                  width: '100%'
-                }}>
-                  <DateInput
-                    value={currentDate}
-                    onChange={(e) => setCurrentDate(e.target.value)}
-                    size="small"
-                    InputProps={{
-                      endAdornment: (
-                        <InputAdornment position="end">
-                          <CalendarTodayIcon />
-                        </InputAdornment>
-                      ),
-                    }}
-                  />
-                </Box>
-                
-                {/* Table with responsive scroll */}
-                <ScrollableTableContainer>
-                  <Table size="small" stickyHeader>
-                    <TableHead>
-                      <TableRow>
-                        <StyledTableHeaderCell>Nombre</StyledTableHeaderCell>
-                        <StyledTableHeaderCell align="center">Entrada</StyledTableHeaderCell>
-                        <StyledTableHeaderCell align="center">Salida</StyledTableHeaderCell>
-                      </TableRow>
-                    </TableHead>
-                    <TableBody>
-                      {visibleRecords.map((record) => (
-                        <TableRow key={record.id}>
-                          <StyledTableCell 
-                            sx={{ 
-                              maxWidth: { xs: '100px', sm: '150px', md: 'none' },
-                              overflow: 'hidden',
-                              textOverflow: 'ellipsis',
-                              whiteSpace: 'nowrap'
-                            }}
-                          >
-                            <Box sx={{ 
-                              display: 'flex', 
-                              alignItems: 'center',
-                            }}>
-                              <Avatar 
-                                sx={{ 
-                                  bgcolor: '#12151f',
-                                  width: avatarSize,
-                                  height: avatarSize,
-                                  mr: isMobile ? 0.5 : 1.5,
-                                  fontSize: isMobile ? '0.75rem' : '1rem'
-                                }} 
-                              />
-                              <Typography 
-                                variant={isMobile ? "caption" : "body2"}
-                                noWrap
-                              >
-                                {record.name}
-                              </Typography>
-                            </Box>
-                          </StyledTableCell>
-                          <StyledTableCell align="center">{record.entryTime}</StyledTableCell>
-                          <StyledTableCell align="center">{record.exitTime}</StyledTableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </ScrollableTableContainer>
 
-                {/* Pagination */}
-                <Box sx={{ 
-                  display: 'flex', 
-                  justifyContent: 'center', 
-                  mt: { xs: 1, sm: 1 }, 
-                  mb: { xs: 0.5, sm: 1 },
-                  alignItems: 'center' 
-                }}>
-                  <PageButton size="small">
-                    <ChevronLeftIcon fontSize="small" />
-                  </PageButton>
-                  <PageButton size="small">
-                    <ChevronRightIcon fontSize="small" />
-                  </PageButton>
+            <Grid item xs={12} md={7} order={{ xs: 2, md: 0 }}>
+              <DarkPaper sx={{ p: { xs: 1, sm: 2 }, height: { xs: 'auto', sm: '100%' } }}>
+                <Box sx={{ display: 'flex', justifyContent: 'center', mb: { xs: 1, sm: 2 }, width: '100%' }}>
+                  <CustomDatePickerWrapper>
+                    <DatePicker
+                      selected={currentDate}
+                      onChange={(date: Date | null) => {
+                        if (date) setCurrentDate(date);
+                      }}
+                      dateFormat="yyyy-MM-dd"
+                      locale={es}
+                      placeholderText="Selecciona una fecha"
+                    />
+                  </CustomDatePickerWrapper>
                 </Box>
+
+                {visibleRecords.length === 0 ? (
+                  <Typography variant="body2" color="gray" align="center" sx={{ mt: 2 }}>
+                    No hay asistencias registradas para esta fecha.
+                  </Typography>
+                ) : (
+                  <ScrollableTableContainer>
+                    <Table size="small" stickyHeader>
+                      <TableHead>
+                        <TableRow>
+                          <StyledTableHeaderCell>Nombre</StyledTableHeaderCell>
+                          <StyledTableHeaderCell align="center">Entrada</StyledTableHeaderCell>
+                          <StyledTableHeaderCell align="center">Salida</StyledTableHeaderCell>
+                        </TableRow>
+                      </TableHead>
+                      <TableBody>
+                        {visibleRecords.map((record) => (
+                          <TableRow key={record.id}>
+                            <StyledTableCell>
+                              <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                                <Avatar src={record.photo} sx={{ bgcolor: '#12151f', width: avatarSize, height: avatarSize, mr: isMobile ? 0.5 : 1.5, fontSize: isMobile ? '0.75rem' : '1rem' }} />
+                                <Typography variant={isMobile ? "caption" : "body2"} noWrap>
+                                  {record.name}
+                                </Typography>
+                              </Box>
+                            </StyledTableCell>
+                            <StyledTableCell align="center">{record.entryTime}</StyledTableCell>
+                            <StyledTableCell align="center">{record.exitTime}</StyledTableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </ScrollableTableContainer>
+                )}
               </DarkPaper>
             </Grid>
 
-            {/* Right section - Image (visible only on tablet and up) */}
             {!isMobile && (
               <Grid item xs={12} md={5} order={{ xs: 1, md: 2 }}>
-                <Box 
-                  sx={{ 
-                    height: { sm: '300px', md: '100%' }, 
-                    borderRadius: { xs: 2, sm: 4 }, 
-                    overflow: 'hidden', 
-                    display: 'flex',
-                    justifyContent: 'center'
-                  }}
-                >
-                  <Box 
-                    component="img"
-                    src={img}
-                    alt="Gym workout"
-                    sx={{ 
-                      width: '100%', 
-                      height: '100%', 
-                      objectFit: 'cover',
-                      borderRadius: { xs: 2, sm: 4 }
-                    }}
-                  />
+                <Box sx={{ height: { sm: '300px', md: '100%' }, borderRadius: { xs: 2, sm: 4 }, overflow: 'hidden', display: 'flex', justifyContent: 'center' }}>
+                  <Box component="img" src={img} alt="Gym workout" sx={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: { xs: 2, sm: 4 } }} />
                 </Box>
               </Grid>
             )}
@@ -328,6 +272,7 @@ const Assistance: React.FC = () => {
         </Grid>
       </Grid>
     </Box>
+    </>
   );
 };
 

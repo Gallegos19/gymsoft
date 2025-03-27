@@ -184,11 +184,7 @@ const Login: React.FC = () => {
         setLoading(false);
     }
 
-    if (email === TEST_EMAIL && password === TEST_PASSWORD) {
-      navigate("/");
-    } else {
-      setLoginError("Correo electrónico o contraseña incorrectos");
-    }
+
   };
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
@@ -323,29 +319,7 @@ const Login: React.FC = () => {
               Iniciar Sesión
             </OrangeButton>
           </Box>
-          
-          <Box sx={{ textAlign: 'center' }}>
-            <Typography 
-              variant="body1" 
-              sx={{ 
-                color: 'white', 
-                display: { xs: 'block', sm: 'inline' },
-                mb: { xs: 1, sm: 0 }
-              }}
-            >
-              ¿No tienes Cuenta? 
-            </Typography>
-            <OrangeLink 
-              variant="body1" 
-              sx={{ 
-                ml: { xs: 0, sm: 1 }, 
-                display: { xs: 'block', sm: 'inline' } 
-              }} 
-              onClick={() => navigate("/register")}
-            >
-              Registrate acá
-            </OrangeLink>
-          </Box>
+  
         </Container>
       </Box>
     </StyledPaper>

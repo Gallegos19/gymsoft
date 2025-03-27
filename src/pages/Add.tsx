@@ -1,4 +1,4 @@
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { 
   Typography, 
   Box, 
@@ -11,13 +11,23 @@ import {
   FormControl,
   InputLabel,
   useMediaQuery,
-  useTheme
+  useTheme,
+  Alert,
+  CircularProgress
 } from "@mui/material";
 import CloudUploadIcon from '@mui/icons-material/CloudUpload';
 import ArrowDropDownIcon from '@mui/icons-material/ArrowDropDown';
 import Header from "../components/ui/Header";
 import { styled } from '@mui/material/styles';
 import img from 'assets/entrenamiento-joven-pareja-deportiva.avif';
+import { useNavigate } from "react-router-dom";
+import CreateUser from "../api/clients/CreateUser";
+import { StorageService } from "../core/services/StorageService";
+import Swal from 'sweetalert2';
+import GetPlan from '../api/clients/GetAllPlanGym'; 
+import GetAllOutlet, {Sucursal} from "../api/clients/GetAllOutlet";
+
+
 
 // Styled components
 const DarkPaper = styled(Paper)(({ theme }) => ({
@@ -111,28 +121,50 @@ const ImageUploadBox = styled(Box)(({ theme }) => ({
 const HiddenInput = styled('input')({
   display: 'none',
 });
+export interface Plan {
+  id: string;
+  name: string;
+  last_name: string;
+  cost: number;
+  date: number;
+  id_gimnasio: string;
+}
 
 const Add: React.FC = () => {
   const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
-  const isTablet = useMediaQuery(theme.breakpoints.between('sm', 'md'));
-  
+  const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
+  const isTablet = useMediaQuery(theme.breakpoints.between("sm", "md"));
+
   // Estados para los campos de formulario
-  const [nombre, setNombre] = useState('');
-  const [apellido, setApellido] = useState('');
-  const [sexo, setSexo] = useState('');
-  const [telefono, setTelefono] = useState('');
-  const [tipoMembresia, setTipoMembresia] = useState('');
+  const [nombre, setNombre] = useState("");
+  const [apellido, setApellido] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [sexo, setSexo] = useState("");
+  const [edad, setEdad] = useState("");
+  const [telefono, setTelefono] = useState("");
+  const [tipoMembresia, setTipoMembresia] = useState("");
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
-  
+  const [id_actualPlan, setId_actualPlan] = useState("");
+  const [id_sucursal, setId_sucursal] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [addError, setAddError] = useState("");
+  const navigate = useNavigate();
+  const storage = StorageService.getInstance();
+  const token = storage.getItem("auth_token");
+  const id_gym = storage.getItem("id_gimnasios");
+  const id_owner = storage.getItem("user_id");
+  const [planes, setPlanes] = useState<Plan[]>([]);
+  const [sucursal, setSucursal] = useState<Sucursal[]>([]);
+ 
   const fileInputRef = useRef<HTMLInputElement>(null);
-  
+
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     if (event.target.files && event.target.files.length > 0) {
       const file = event.target.files[0];
       setSelectedFile(file);
-      
+
       // Crear URL para previsualizar la imagen
       const fileReader = new FileReader();
       fileReader.onload = () => {
@@ -141,10 +173,145 @@ const Add: React.FC = () => {
       fileReader.readAsDataURL(file);
     }
   };
-  
+
   const handleUploadClick = () => {
     if (fileInputRef.current) {
       fileInputRef.current.click();
+    }
+  };
+  const fetchPlanes = async () => {
+    try {
+        if (!token) {
+          Swal.fire({
+            icon: 'error',
+            title: 'Token no disponible',
+            text: 'No se pudo recuperar el token de autenticación.',
+            confirmButtonColor: '#ff7b00'
+          });
+          return;
+      }
+      const response = await GetPlan.getAllPlan(Number(id_gym), token);
+
+      if (Array.isArray(response)) {
+        console.warn('No se pudieron obtener los planes');
+        setPlanes([]);
+      } else {
+        setPlanes(response.data);
+      }
+    } catch (error) {
+      console.error('Error al cargar los planes:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+  const fetchSucursal = async () => {
+    try {
+        if (!token) {
+          Swal.fire({
+            icon: 'error',
+            title: 'Token no disponible',
+            text: 'No se pudo recuperar el token de autenticación.',
+            confirmButtonColor: '#ff7b00'
+          });
+          return;
+      }
+      const response = await GetAllOutlet.getAllOutlet(token);
+
+      if (Array.isArray(response)) {
+        console.warn('No se pudieron obtener los planes');
+        setSucursal([]);
+      } else {
+        setSucursal(response.data);
+      }
+    } catch (error) {
+      console.error('Error al cargar los planes:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+  useEffect(() => {
+    fetchSucursal();
+    fetchPlanes();
+  }, []);
+
+  const handleAdd = async () => {
+    setLoading(true);
+    setAddError("");
+
+    if (
+      !nombre ||
+      !email ||
+      !apellido ||
+      !password ||
+      !sexo ||
+      !edad ||
+      !telefono ||
+      !tipoMembresia ||
+      !selectedFile ||
+      !id_sucursal
+    ) {
+      setAddError("Por favor, complete todos los campos");
+      setLoading(false);
+      return;
+    }
+      if (!token) {
+        Swal.fire({
+          icon: 'error',
+          title: 'Token no disponible',
+          text: 'No se pudo recuperar el token de autenticación.',
+          confirmButtonColor: '#ff7b00'
+        });
+        return;
+      }
+
+    try {
+      console.log(selectedFile);
+      const success = await CreateUser.CreateUser({
+        name: nombre,
+        last_name: apellido,
+        email,
+        password,
+        sex: sexo,
+        phone: telefono,
+        year_old: edad,
+        file: selectedFile,
+        id_actualPlan: tipoMembresia,
+        id_sucursal,
+      }, token);
+
+      if (success) {
+         await Swal.fire({
+              icon: 'success',
+              title: `Miembro agregado con éxito`,
+              showConfirmButton: false,
+              timer: 1500,
+              background: '#1a1e2a',
+              color: '#fff'
+            });
+        navigate("/home");
+      } else {
+        setAddError("Datos invalidos");
+        Swal.fire({
+              icon: 'error',
+              title: 'Error',
+              text: 'Datos invalidos',
+              confirmButtonColor: '#ff7b00',
+              background: '#1a1e2a',
+              color: '#fff'
+            });
+      }
+    } catch (error) {
+      setAddError("Ocurrió un error al crear el usuario");
+      Swal.fire({
+            icon: 'error',
+            title: 'Error',
+            text: 'Ocurrió un error al crear el usuario',
+            confirmButtonColor: '#ff7b00',
+            background: '#1a1e2a',
+            color: '#fff'
+          });
+    } finally {
+      setLoading(false);
     }
   };
   
@@ -159,7 +326,7 @@ const Add: React.FC = () => {
       <Grid container spacing={{ xs: 1, sm: 2 }}>
         {/* Header section */}
         <Grid item xs={12}>
-          <Header gymName="NOMBRE DEL GYM" />
+          <Header />
         </Grid>
 
         {/* Title and manage button */}
@@ -170,16 +337,21 @@ const Add: React.FC = () => {
           alignItems: { xs: 'flex-start', sm: 'center' },
           gap: { xs: 1, sm: 0 }
         }}>
-          <Typography variant="h6" color="#ff7b00">Agregar Membresia</Typography>
-          <OrangeButton size={isMobile ? "small" : "medium"}>
-            Gestionar membresías
-          </OrangeButton>
+          <Typography variant="h6" color="#ff7b00">Agregar Membresía</Typography>
         </Grid>
+
+        {/* Error message display */}
+        {addError && (
+          <Grid item xs={12}>
+            <Alert severity="error" sx={{ backgroundColor: 'rgba(211, 47, 47, 0.1)', color: '#f44336' }}>
+              {addError}
+            </Alert>
+          </Grid>
+        )}
 
         {/* Main content */}
         <Grid item xs={12}>
           <DarkPaper>
-            {/* Left section - Image */}
             <Box 
               sx={{ 
                 width: { xs: '100%', md: '180px' }, 
@@ -209,24 +381,40 @@ const Add: React.FC = () => {
               display: 'flex',
               flexDirection: { xs: 'column', md: 'row' }
             }}>
-              {/* Form fields */}
+              {/* Form fields - First column */}
               <Box sx={{ 
                 flex: 1, 
-                mr: { md: 4 },
+                mr: { md: 2 },
                 mb: { xs: 2, md: 0 }
               }}>
                 <StyledTextField 
                   fullWidth
-                  placeholder="Nombre completo"
+                  placeholder="Nombre"
                   value={nombre}
                   onChange={(e) => setNombre(e.target.value)}
                 />
                 
                 <StyledTextField 
                   fullWidth
-                  placeholder="Nombre de equipo"
+                  placeholder="Apellido"
                   value={apellido}
                   onChange={(e) => setApellido(e.target.value)}
+                />
+
+                <StyledTextField 
+                  fullWidth
+                  placeholder="Correo electrónico"
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                />
+
+                <StyledTextField 
+                  fullWidth
+                  placeholder="Contraseña"
+                  type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
                 />
                 
                 <StyledSelect fullWidth>
@@ -242,15 +430,30 @@ const Add: React.FC = () => {
                       return selected;
                     }}
                   >
-                    <MenuItem value="masculino">Masculino</MenuItem>
-                    <MenuItem value="femenino">Femenino</MenuItem>
-                    <MenuItem value="otro">Otro</MenuItem>
+                    <MenuItem value="M">Masculino</MenuItem>
+                    <MenuItem value="F">Femenino</MenuItem>
+                    <MenuItem value="O">Otro</MenuItem>
                   </Select>
                 </StyledSelect>
+              </Box>
+
+              {/* Form fields - Second column */}
+              <Box sx={{ 
+                flex: 1, 
+                mr: { md: 2 },
+                mb: { xs: 2, md: 0 }
+              }}>
+                <StyledTextField 
+                  fullWidth
+                  placeholder="Edad"
+                  type="number"
+                  value={edad}
+                  onChange={(e) => setEdad(e.target.value)}
+                />
                 
                 <StyledTextField 
                   fullWidth
-                  placeholder="Ingrese el teléfono"
+                  placeholder="Teléfono"
                   value={telefono}
                   onChange={(e) => setTelefono(e.target.value)}
                 />
@@ -268,9 +471,35 @@ const Add: React.FC = () => {
                       return selected;
                     }}
                   >
-                    <MenuItem value="mensual">Mensual</MenuItem>
-                    <MenuItem value="trimestral">Trimestral</MenuItem>
-                    <MenuItem value="anual">Anual</MenuItem>
+                    {
+                      planes.map((tipo) => (
+                        <MenuItem key={tipo.id} value={tipo.id}>{tipo.name}</MenuItem>
+                      ))
+                    }
+                  
+                  </Select>
+                </StyledSelect>
+
+                <StyledSelect fullWidth>
+                  <Select
+                    value={id_sucursal}
+                    onChange={(e) => setId_sucursal(e.target.value as string)}
+                    displayEmpty
+                    IconComponent={ArrowDropDownIcon}
+                    renderValue={(selected) => {
+                      if (!selected) {
+                        return "Sucursal";
+                      }
+                      return selected;
+                    }}
+                  >
+                     {sucursal.map((s) =>
+                        s.id === id_owner ? (
+                          <MenuItem key={s.id} value={s.id}>
+                            {s.name}
+                          </MenuItem>
+                        ) : null
+                      )}
                   </Select>
                 </StyledSelect>
               </Box>
@@ -281,8 +510,9 @@ const Add: React.FC = () => {
                 flex: { md: 0 }, 
                 mr: { md: 2 }, 
                 display: 'flex', 
-                alignItems: 'center',
-                justifyContent: { xs: 'center', md: 'flex-start' }
+                alignItems: 'flex-start',
+                justifyContent: { xs: 'center', md: 'flex-start' },
+                mt: { xs: 1, md: 0 }
               }}>
                 <Box sx={{ 
                   width: '100%', 
@@ -330,15 +560,21 @@ const Add: React.FC = () => {
         </Grid>
         
         {/* Bottom action button */}
-        
         <Grid item xs={12} sx={{ 
           display: 'flex', 
           flexDirection: { xs: 'column', sm: 'row' }, 
-          justifyContent: 'right', 
+          justifyContent: 'flex-end', 
           alignItems: { xs: 'flex-end', sm: 'center' },
-          mt: 5
+          mt: 3
         }}>
-          <OrangeButton size={isMobile ? "small" : "medium"}>Agregar</OrangeButton>
+          <OrangeButton 
+            size={isMobile ? "small" : "medium"} 
+            onClick={handleAdd}
+            disabled={loading}
+            startIcon={loading ? <CircularProgress size={20} color="inherit" /> : null}
+          >
+            {loading ? "Procesando..." : "Agregar"}
+          </OrangeButton>
         </Grid>
       </Grid>
     </Box>

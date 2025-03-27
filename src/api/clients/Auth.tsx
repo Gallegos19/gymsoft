@@ -16,6 +16,7 @@ interface LoginResponse {
     email: string;
     password: string;
     rol: string;
+    id_gimnasio: string;
   };
   token: string;
 }
@@ -24,6 +25,7 @@ interface AuthState {
   isAuthenticated: boolean;
   userId: string | null;
   userRole: string | null;
+  id_gimnasio: string | null;
 }
 
 // Clase Auth que implementa el patrón Singleton
@@ -41,11 +43,13 @@ export class Auth {
     const token = this.storage.getItem('auth_token');
     const userId = this.storage.getItem('user_id');
     const userRole = this.storage.getItem('user_role');
+    const id_gimnasio = this.storage.getItem('id_gimnasios');
     
     this.authState = {
       isAuthenticated: !!token,
       userId: userId,
-      userRole: userRole
+      userRole: userRole, 
+      id_gimnasio: id_gimnasio
     };
   }
 
@@ -74,12 +78,14 @@ export class Auth {
         this.storage.setItem('auth_token', response.data.token);
         this.storage.setItem('user_id', response.data.data.id);
         this.storage.setItem('user_role', response.data.data.rol);
+        this.storage.setItem('id_gimnasios', response.data.data.id_gimnasio);
         
         // Actualizar estado de autenticación
         this.authState = {
           isAuthenticated: true,
           userId: response.data.data.id,
-          userRole: response.data.data.rol
+          userRole: response.data.data.rol,
+          id_gimnasio: response.data.data.id_gimnasio
         };
         
         return true;
@@ -98,12 +104,14 @@ export class Auth {
     this.storage.removeItem('auth_token');
     this.storage.removeItem('user_id');
     this.storage.removeItem('user_role');
+    this.storage.removeItem('id_gimnasios');
     
     // Restablecer estado de autenticación
     this.authState = {
       isAuthenticated: false,
       userId: null,
-      userRole: null
+      userRole: null,
+      id_gimnasio: null
     };
   }
 
@@ -125,6 +133,9 @@ export class Auth {
   // Método para obtener el rol del usuario
   public getUserRole(): string | null {
     return this.authState.userRole;
+  }
+  public getIdGimnasio(): string | null {
+    return this.authState.id_gimnasio;
   }
 
   // Método para configurar el token en las cabeceras de Axios

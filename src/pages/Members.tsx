@@ -1,5 +1,4 @@
-// src/pages/Members.tsx
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { 
   Typography, 
   Box, 
@@ -21,7 +20,6 @@ import {
   useMediaQuery,
   Card,
   CardContent,
-  Stack,
   Chip,
   Select,
   MenuItem,
@@ -34,15 +32,22 @@ import DeleteIcon from '@mui/icons-material/Delete';
 import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
 import ChevronRightIcon from '@mui/icons-material/ChevronRight';
 import FilterListIcon from '@mui/icons-material/FilterList';
-import Header from "../components/ui/Header";
 import { styled } from '@mui/material/styles';
+import Swal from 'sweetalert2';
 
-// Styled components
+
+import Header from "../components/ui/Header";
+import GetClients, { Client } from "../api/clients/GetClients";
+import { StorageService } from "../core/services/StorageService";
+import RenovattionMember from "../api/clients/RenovattionMember";
+
+
+// Estilos
 const DarkPaper = styled(Paper)(({ theme }) => ({
   backgroundColor: '#1a1e2a',
   color: '#fff',
   padding: theme.spacing(2),
-  height: '100%',
+  height: '65vh',
   borderRadius: 8,
 }));
 
@@ -89,22 +94,43 @@ const MemberCard = styled(Card)(({ theme }) => ({
   border: '1px solid #2a2e3a',
 }));
 
-// Definir datos de ejemplo para la tabla
-const membersData = [
-  { id: 1, name: "Juan Perez", gender: "M", phone: "9911423333", expiryDate: "18-01-2025" },
-  { id: 2, name: "María González", gender: "F", phone: "9922334455", expiryDate: "22-02-2025" },
-  { id: 3, name: "Carlos Rodríguez", gender: "M", phone: "9933445566", expiryDate: "05-03-2025" },
-  { id: 4, name: "Ana López", gender: "F", phone: "9944556677", expiryDate: "12-04-2025" },
-];
-
 const Members: React.FC = () => {
   const [tabValue, setTabValue] = useState(0);
   const [month, setMonth] = useState("");
-  
+  const [membersData, setMembersData] = useState<Client[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState("");
+
+
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const isTablet = useMediaQuery(theme.breakpoints.between('sm', 'md'));
-  
+
+  useEffect(() => {
+    const fetchClients = async () => {
+      const storage = StorageService.getInstance();
+      const token = storage.getItem("auth_token");
+      const idGymRaw = storage.getItem("id_gimnasios");
+      const idGym = Number(idGymRaw);
+
+      if (!token || isNaN(idGym)) {
+        console.warn("Token o ID de gimnasio inválido");
+        setLoading(false);
+        return;
+      }
+
+      const response = await GetClients.getAllClients(idGym, token);
+      if (!Array.isArray(response)) {
+        setMembersData(response.data);
+      } else {
+        setMembersData([]);
+      }
+      setLoading(false);
+    };
+
+    fetchClients();
+  }, []);
+
   const handleTabChange = (event: React.SyntheticEvent, newValue: number) => {
     setTabValue(newValue);
   };
@@ -113,20 +139,113 @@ const Members: React.FC = () => {
     setMonth(event.target.value as string);
   };
 
+
+const handleChangeMembershipStatus = async (member: Client, newStatus: boolean) => {
+  const storage = StorageService.getInstance();
+  const token = storage.getItem("auth_token");
+
+  if (!token) {
+    Swal.fire({
+      icon: 'error',
+      title: 'Token no disponible',
+      text: 'No se pudo recuperar el token de autenticación.',
+      confirmButtonColor: '#ff7b00'
+    });
+    return;
+  }
+
+  const success = await RenovattionMember.RenovattionMember(member, token, newStatus);
+
+  if (success) {
+    await Swal.fire({
+      icon: 'success',
+      title: `Miembro ${newStatus ? 'activado' : 'desactivado'} con éxito`,
+      showConfirmButton: false,
+      timer: 1500,
+      background: '#1a1e2a',
+      color: '#fff'
+    });
+
+    // Reload después de alerta
+    window.location.reload();
+  } else {
+    Swal.fire({
+      icon: 'error',
+      title: 'Error',
+      text: 'No se pudo cambiar el estado del miembro.',
+      confirmButtonColor: '#ff7b00',
+      background: '#1a1e2a',
+      color: '#fff'
+    });
+  }
+};
+
+  
+
+  const getFilteredMembers = () => {
+    const today = new Date();
+    const inSevenDays = new Date();
+    inSevenDays.setDate(today.getDate() + 7);
+  
+    let filtered = [];
+  
+    switch (tabValue) {
+      case 0: // Activos
+        filtered = membersData.filter(m => m.membership_status === true);
+        break;
+      case 1: // Inactivos
+        filtered = membersData.filter(m => m.membership_status === false);
+        break;
+      case 2: // Próximos a vencer
+        filtered = membersData.filter(m => {
+          if (!m.membership_status) return false;
+          const endDate = new Date(m.date_end);
+          return endDate >= today && endDate <= inSevenDays;
+        });
+        break;
+      default:
+        filtered = membersData;
+    }
+  
+    if (searchQuery.trim() !== "") {
+      filtered = filtered.filter(m =>
+        `${m.name} ${m.last_name}`.toLowerCase().includes(searchQuery.toLowerCase())
+      );
+    }
+  
+    return filtered;
+  };
+  
+
+  // Contadores para los tabs
+  const activeCount = membersData.filter(m => m.membership_status === true).length;
+  const inactiveCount = membersData.filter(m => m.membership_status === false).length;
+  const soonExpiringCount = membersData.filter(m => {
+    if (!m.membership_status) return false;
+    const today = new Date();
+    const inSevenDays = new Date();
+    inSevenDays.setDate(today.getDate() + 7);
+    const endDate = new Date(m.date_end);
+    return endDate >= today && endDate <= inSevenDays;
+  }).length;
+
   const renderMobileView = () => (
     <>
+      {/* Buscador y Filtros */}
       <Box sx={{ display: 'flex', flexDirection: 'column', mb: 2, gap: 2 }}>
         <TextField
           fullWidth
           placeholder="Buscar miembro..."
           size="small"
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
           InputProps={{
             endAdornment: (
               <InputAdornment position="end">
                 <SearchIcon sx={{ color: '#6b7280' }} />
               </InputAdornment>
             ),
-            sx: { 
+            sx: {
               color: '#fff',
               backgroundColor: '#242836',
               borderRadius: 1,
@@ -136,95 +255,99 @@ const Members: React.FC = () => {
             }
           }}
         />
-        
+  
         <Box sx={{ display: 'flex', justifyContent: 'space-between', gap: 1 }}>
-          <FormControl size="small" fullWidth sx={{ 
-            backgroundColor: '#242836',
-            borderRadius: 1,
-            '& .MuiOutlinedInput-notchedOutline': { border: 'none' },
-            '& .MuiSelect-select': { color: '#fff' },
-            '& .MuiInputLabel-root': { color: '#6b7280' }
-          }}>
-            <InputLabel id="month-select-label">Mes</InputLabel>
-            <Select
-              labelId="month-select-label"
-              value={month}
-              label="Mes"
-              onChange={handleMonthChange as any}
-              sx={{ color: '#fff' }}
-            >
-              <MenuItem value=""><em>Todos</em></MenuItem>
-              <MenuItem value="01">Enero</MenuItem>
-              <MenuItem value="02">Febrero</MenuItem>
-              <MenuItem value="03">Marzo</MenuItem>
-              {/* Agregar más meses */}
-            </Select>
-          </FormControl>
-          
-          <IconButton 
-            sx={{ 
-              backgroundColor: '#242836', 
+          <FormControl
+            size="small"
+            sx={{
+              backgroundColor: '#242836',
               borderRadius: 1,
-              color: '#6b7280',
-              height: '40px',
-              width: '40px'
+              minWidth: '140px',
+              '& .MuiOutlinedInput-notchedOutline': { border: 'none' },
+              '& .MuiSelect-select': { color: '#fff' },
+              '& .MuiInputLabel-root': { color: '#6b7280' }
             }}
           >
-            <FilterListIcon />
-          </IconButton>
+            <InputLabel id="status-tab-label">Estado</InputLabel>
+            <Select
+              labelId="status-tab-label"
+              value={tabValue}
+              label="Estado"
+              onChange={(e) => handleTabChange(e as any, parseInt(e.target.value as string))}
+            >
+              <MenuItem value={0}>Activos ({activeCount})</MenuItem>
+              <MenuItem value={1}>Inactivos ({inactiveCount})</MenuItem>
+              <MenuItem value={2}>Próx. a vencer ({soonExpiringCount})</MenuItem>
+            </Select>
+          </FormControl>
         </Box>
       </Box>
-      
-      {/* Mobile cards */}
-      {membersData.map((member) => (
-        <MemberCard key={member.id}>
-          <CardContent>
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1 }}>
-              <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                <Avatar sx={{ bgcolor: '#12151f', width: 40, height: 40, mr: 1.5 }} />
-                <Box>
-                  <Typography variant="subtitle1">{member.name}</Typography>
-                  <Typography variant="body2" color="#6b7280">{member.phone}</Typography>
+  
+      {/* Lista de miembros */}
+      {loading ? (
+        <Typography>Cargando miembros...</Typography>
+      ) : getFilteredMembers().length === 0 ? (
+        <Typography>No hay miembros para mostrar.</Typography>
+      ) : (
+        getFilteredMembers().map((member) => (
+          <MemberCard key={member.id}>
+            <CardContent>
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1 }}>
+                <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                  <Avatar src={member.photo} sx={{ bgcolor: '#12151f', width: 40, height: 40, mr: 1.5 }} />
+                  <Box>
+                    <Typography variant="subtitle1">{member.name} {member.last_name}</Typography>
+                    <Typography variant="body2" color="#6b7280">{member.phone}</Typography>
+                  </Box>
                 </Box>
+                <Chip
+                  label={member.date_end}
+                  size="small"
+                  sx={{
+                    backgroundColor: '#242836',
+                    color: '#ff7b00',
+                    height: '24px',
+                    '& .MuiChip-label': { px: 1 }
+                  }}
+                />
               </Box>
-              <Chip 
-                label={member.expiryDate} 
-                size="small" 
-                sx={{ 
-                  backgroundColor: '#242836', 
-                  color: '#ff7b00',
-                  height: '24px',
-                  '& .MuiChip-label': { px: 1 }
-                }} 
-              />
-            </Box>
-            
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 1 }}>
-              <Chip 
-                label={member.gender === 'M' ? 'Masculino' : 'Femenino'} 
-                size="small" 
-                sx={{ 
-                  backgroundColor: '#242836', 
-                  color: '#fff',
-                  height: '24px',
-                  '& .MuiChip-label': { px: 1 }
-                }} 
-              />
-              
-              <Box>
-                <IconButton size="small" sx={{ color: '#6b7280' }}>
+  
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 1 }}>
+                <Chip
+                  label={member.sex === 'M' ? 'Masculino' : 'Femenino'}
+                  size="small"
+                  sx={{
+                    backgroundColor: '#242836',
+                    color: '#fff',
+                    height: '24px',
+                    '& .MuiChip-label': { px: 1 }
+                  }}
+                />
+                <Box>
+                <IconButton 
+                  size="small" 
+                  sx={{ color: '#6b7280' }} 
+                  onClick={() => handleChangeMembershipStatus(member, true)}
+                >
                   <RefreshIcon fontSize="small" />
                 </IconButton>
-                <IconButton size="small" sx={{ color: '#6b7280' }}>
+                <IconButton 
+                  size="small" 
+                  sx={{ color: '#6b7280' }} 
+                  onClick={() => handleChangeMembershipStatus(member, false)}
+                >
                   <DeleteIcon fontSize="small" />
                 </IconButton>
+
+                </Box>
               </Box>
-            </Box>
-          </CardContent>
-        </MemberCard>
-      ))}
+            </CardContent>
+          </MemberCard>
+        ))
+      )}
     </>
   );
+  
 
   const renderTableView = () => (
     <>
@@ -236,7 +359,8 @@ const Members: React.FC = () => {
         justifyContent: 'space-between', 
         alignItems: isTablet ? 'flex-start' : 'center' 
       }}>
-        {/* Tabs */}
+        
+
         <Tabs 
           value={tabValue} 
           onChange={handleTabChange} 
@@ -244,16 +368,16 @@ const Members: React.FC = () => {
           indicatorColor="primary"
           variant={isTablet ? "fullWidth" : "standard"}
         >
-          <Tab label="Activos" sx={{ color: tabValue === 0 ? '#ff7b00' : '#6b7280', textTransform: 'none' }} />
-          <Tab label="Inactivos" sx={{ color: tabValue === 1 ? '#ff7b00' : '#6b7280', textTransform: 'none' }} />
-          <Tab label="Próximos a vencer" sx={{ color: tabValue === 2 ? '#ff7b00' : '#6b7280', textTransform: 'none' }} />
+          <Tab label={`Activos (${activeCount})`} sx={{ color: tabValue === 0 ? '#ff7b00' : '#6b7280', textTransform: 'none' }} />
+          <Tab label={`Inactivos (${inactiveCount})`} sx={{ color: tabValue === 1 ? '#ff7b00' : '#6b7280', textTransform: 'none' }} />
+          <Tab label={`Próx. a vencer (${soonExpiringCount})`} sx={{ color: tabValue === 2 ? '#ff7b00' : '#6b7280', textTransform: 'none' }} />
         </Tabs>
-        
-        {/* Search box */}
-        <Box sx={{ display: 'flex', alignItems: 'center', width: isTablet ? '100%' : 'auto' }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
           <TextField
-            placeholder="Buscar..."
+            placeholder="Buscar por nombre..."
             size="small"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
             InputProps={{
               endAdornment: (
                 <InputAdornment position="end">
@@ -269,38 +393,20 @@ const Members: React.FC = () => {
                 }
               }
             }}
-            sx={{ width: isTablet ? '70%' : '200px', mr: 2 }}
+            sx={{ width: '300px' }}
           />
-          
-          <FormControl size="small" sx={{ 
-            width: isTablet ? '30%' : 'auto',
-            backgroundColor: '#242836',
-            borderRadius: 1,
-            '& .MuiOutlinedInput-notchedOutline': { border: 'none' },
-            '& .MuiSelect-select': { color: '#fff' },
-            '& .MuiInputLabel-root': { color: '#6b7280' }
-          }}>
-            <InputLabel id="month-select-label">Mes</InputLabel>
-            <Select
-              labelId="month-select-label"
-              value={month}
-              label="Mes"
-              onChange={handleMonthChange as any}
-              sx={{ color: '#fff' }}
-            >
-              <MenuItem value=""><em>Todos</em></MenuItem>
-              <MenuItem value="01">Enero</MenuItem>
-              <MenuItem value="02">Febrero</MenuItem>
-              <MenuItem value="03">Marzo</MenuItem>
-              {/* Agregar más meses */}
-            </Select>
-          </FormControl>
         </Box>
       </Box>
-      
-      {/* Table */}
-      <TableContainer>
-        <Table>
+
+      <TableContainer
+        sx={{
+          maxHeight: '45vh',
+          overflowY: 'auto',
+          scrollbarWidth: 'none', 
+          '&::-webkit-scrollbar': { display: 'none' }, 
+        }}
+      >
+      <Table>
           <TableHead>
             <TableRow>
               <StyledTableHeaderCell>Nombre</StyledTableHeaderCell>
@@ -312,29 +418,49 @@ const Members: React.FC = () => {
             </TableRow>
           </TableHead>
           <TableBody>
-            {membersData.map((member) => (
-              <TableRow key={member.id}>
-                <StyledTableCell>
-                  <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                    <Avatar sx={{ bgcolor: '#12151f', width: 32, height: 32, mr: 1.5 }} />
-                    {member.name}
-                  </Box>
-                </StyledTableCell>
-                <StyledTableCell>{member.gender}</StyledTableCell>
-                <StyledTableCell>{member.phone}</StyledTableCell>
-                <StyledTableCell>{member.expiryDate}</StyledTableCell>
-                <StyledTableCell align="right">
-                  <IconButton size="small" sx={{ color: '#6b7280' }}>
-                    <RefreshIcon />
-                  </IconButton>
-                </StyledTableCell>
-                <StyledTableCell align="right">
-                  <IconButton size="small" sx={{ color: '#6b7280' }}>
-                    <DeleteIcon />
-                  </IconButton>
-                </StyledTableCell>
+            {loading ? (
+              <TableRow>
+                <StyledTableCell colSpan={6}>Cargando miembros...</StyledTableCell>
               </TableRow>
-            ))}
+            ) : getFilteredMembers().length === 0 ? (
+              <TableRow>
+                <StyledTableCell colSpan={6}>No hay miembros para mostrar.</StyledTableCell>
+              </TableRow>
+            ) : (
+              getFilteredMembers().map((member) => (
+
+                <TableRow key={member.id}>
+                  <StyledTableCell>
+                    <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                      <Avatar src={member.photo} sx={{ bgcolor: '#12151f', width: 32, height: 32, mr: 1.5 }} />
+                      {member.name} {member.last_name}
+                    </Box>
+                  </StyledTableCell>
+                  <StyledTableCell>{member.sex === 'M' ? 'Masculino' : 'Femenino'}</StyledTableCell>
+                  <StyledTableCell>{member.phone}</StyledTableCell>
+                  <StyledTableCell>{member.date_end}</StyledTableCell>
+                  <StyledTableCell align="right">
+                    <IconButton 
+                      size="small" 
+                      sx={{ color: '#6b7280' }} 
+                      onClick={() => handleChangeMembershipStatus(member, true)}
+                    >
+                      <RefreshIcon />
+                    </IconButton>
+                  </StyledTableCell>
+                  <StyledTableCell align="right">
+                    <IconButton 
+                      size="small" 
+                      sx={{ color: '#6b7280' }} 
+                      onClick={() => handleChangeMembershipStatus(member, false)}
+                    >
+                      <DeleteIcon />
+                    </IconButton>
+                  </StyledTableCell>
+
+                </TableRow>
+              ))
+            )}
           </TableBody>
         </Table>
       </TableContainer>
@@ -351,34 +477,20 @@ const Members: React.FC = () => {
       p: { xs: 1, sm: 2 }
     }}>
       <Grid container spacing={{ xs: 1, sm: 2 }}>
-        {/* Header section */}
         <Grid item xs={12}>
-          <Header gymName="NOMBRE DEL GYM" />
+          <Header />
         </Grid>
 
-        {/* Title */}
         <Grid item xs={12}>
           <Typography variant="h6" color="#ff7b00">
-            Membresias
+            Membresías
           </Typography>
         </Grid>
 
-        {/* Members list */}
         <Grid item xs={12}>
           <DarkPaper sx={{ p: { xs: 1, sm: 2 } }}>
-            {/* Responsive content */}
             {isMobile ? renderMobileView() : renderTableView()}
 
-            {/* Pagination */}
-            <Box sx={{ display: 'flex', justifyContent: 'center', mt: 2, alignItems: 'center' }}>
-              <PageButton size="small">
-                <ChevronLeftIcon />
-              </PageButton>
-              <CurrentPageButton>1</CurrentPageButton>
-              <PageButton size="small">
-                <ChevronRightIcon />
-              </PageButton>
-            </Box>
           </DarkPaper>
         </Grid>
       </Grid>
