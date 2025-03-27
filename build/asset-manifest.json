@@ -1,0 +1,38 @@
+{
+  "files": {
+    "main.css": "/static/css/main.eb533ca2.css",
+    "main.js": "/static/js/main.a53cf4cc.js",
+    "static/js/453.9ca5ba9f.chunk.js": "/static/js/453.9ca5ba9f.chunk.js",
+    "static/media/OurServiceFacilDeUsar.jpg": "/static/media/OurServiceFacilDeUsar.b781617b9b620017a214.jpg",
+    "static/media/OurServiceUnionConClientes.jpg": "/static/media/OurServiceUnionConClientes.434028811d3b48c38cfe.jpg",
+    "static/media/PlansSemestral.jpg": "/static/media/PlansSemestral.1d8d180694b4e755b5e2.jpg",
+    "static/media/OurServiceSeguridad.jpg": "/static/media/OurServiceSeguridad.1444304b4a6ddf5e8b1b.jpg",
+    "static/media/young-muscular-woman-practicing-gym (1).jpg": "/static/media/young-muscular-woman-practicing-gym (1).8c474e5ee4a73a1a1dbf.jpg",
+    "static/media/OurServiceControlFinanciero.jpg": "/static/media/OurServiceControlFinanciero.c136b39ce565a138c03b.jpg",
+    "static/media/PlansAnual.jpg": "/static/media/PlansAnual.06d69e17d2303595c717.jpg",
+    "static/media/FunctionalityAsistencias.png": "/static/media/FunctionalityAsistencias.2fb8a76edf51b07b1932.png",
+    "static/media/Movil.png": "/static/media/Movil.cb64c149bf97f92d0a20.png",
+    "static/media/OurServiceAutomatización.jpg": "/static/media/OurServiceAutomatización.ce44e29147042cc5bae4.jpg",
+    "static/media/young-fitness-man-studio.avif": "/static/media/young-fitness-man-studio.09fe2f059d7a735867cf.avif",
+    "static/media/OurServiceMultiplataforma.jpg": "/static/media/OurServiceMultiplataforma.2b8bcdee396a17247a37.jpg",
+    "static/media/MyAppPc.png": "/static/media/MyAppPc.86b6408abc36a8318648.png",
+    "static/media/PlansMensual.jpg": "/static/media/PlansMensual.eaaa9bce8a2d14b0121c.jpg",
+    "static/media/FunctionalityEstadisticas.png": "/static/media/FunctionalityEstadisticas.866f1636141659c46da3.png",
+    "static/media/LandingBackground.jpg": "/static/media/LandingBackground.672b813115dfb1371fd7.jpg",
+    "static/media/mas-fuerte-joven-atleta-caucasico-muscular-practicando.avif": "/static/media/mas-fuerte-joven-atleta-caucasico-muscular-practicando.5a93584cb54aa1351533.avif",
+    "static/media/entrenamiento-joven-pareja-deportiva.avif": "/static/media/entrenamiento-joven-pareja-deportiva.d8fcb935117cf12af9a2.avif",
+    "static/media/joven con barra z.avif": "/static/media/joven con barra z.2e5730878a4db427e51f.avif",
+    "static/media/vista-frontal-mujer-deportiva-posando.avif": "/static/media/vista-frontal-mujer-deportiva-posando.7448b8848653bf944897.avif",
+    "static/media/FunctionalityRutinas.png": "/static/media/FunctionalityRutinas.4f011a84e8b26bc07c5c.png",
+    "static/media/GSOFT.avif": "/static/media/GSOFT.8b743e08775213f9f89b.avif",
+    "static/media/qr.avif": "/static/media/qr.1f3b123a8778ecf89452.avif",
+    "index.html": "/index.html",
+    "main.eb533ca2.css.map": "/static/css/main.eb533ca2.css.map",
+    "main.a53cf4cc.js.map": "/static/js/main.a53cf4cc.js.map",
+    "453.9ca5ba9f.chunk.js.map": "/static/js/453.9ca5ba9f.chunk.js.map"
+  },
+  "entrypoints": [
+    "static/css/main.eb533ca2.css",
+    "static/js/main.a53cf4cc.js"
+  ]
+}
