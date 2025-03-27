@@ -14,6 +14,9 @@ import { Outlet } from "react-router-dom";
 import Register from "pages/Register";
 import ProtectedRoute from "core/utils/ProtectedRoute";
 import NotFound from "pages/NotFound";
+import AllPages from "../pages/AllPages";
+import PrivacyPolicies from "../pages/PrivacyPolicies";
+import Us from "../pages/Us";
 
 function MainLayoutWrapper() {
   return (
@@ -27,9 +30,12 @@ function App() {
   return (
     <BrowserRouter>
       <Routes>
-        <Route path="/" element={<Navigate to="/login" replace />} />
+        <Route path="/" element={<Navigate to="/landing" replace />} />
 
         <Route path="/login" element={<Login />} />
+        <Route path="/landing" element={<AllPages />} />
+          <Route path="/privacy-policies" element={<PrivacyPolicies />} /> 
+          <Route path="/us" element={<Us />} /> 
 
         {/* Rutas con MainLayout */}
         <Route element={<ProtectedRoute />}>
