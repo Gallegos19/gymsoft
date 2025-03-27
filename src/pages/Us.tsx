@@ -45,7 +45,6 @@ import Navbar from "../components/ui/NavBar";
           >
             Sobre NovaCode
           </Typography>
-
           <Typography
             variant="h6"
             sx={{ color: "#BC6705", fontWeight: "bold", mt: 3 }}
@@ -57,7 +56,6 @@ import Navbar from "../components/ui/NavBar";
             digitales innovadoras. Desde sitios web hasta aplicaciones móviles,
             ayudamos a nuestros clientes a alcanzar sus objetivos tecnológicos.
           </Typography>
-
           <Grid container spacing={3}>
             <Grid item xs={12} sm={6}>
               <Card
@@ -104,7 +102,6 @@ import Navbar from "../components/ui/NavBar";
               </Card>
             </Grid>
           </Grid>
-
           <Typography
             variant="h6"
             sx={{ color: "#BC6705", fontWeight: "bold", mt: 4 }}
@@ -120,7 +117,6 @@ import Navbar from "../components/ui/NavBar";
             <br />
             <b>👥 Trabajo en equipo:</b> Crecemos juntos para lograr más.
           </Typography>
-
           <Typography
             variant="h6"
             sx={{ color: "#BC6705", fontWeight: "bold", mt: 4 }}
@@ -135,7 +131,6 @@ import Navbar from "../components/ui/NavBar";
             ✅ Soluciones a la medida para cada cliente.
             <br />✅ Soporte continuo y atención personalizada.
           </Typography>
-
           <Typography
             variant="h6"
             sx={{ color: "#BC6705", fontWeight: "bold", mt: 4 }}

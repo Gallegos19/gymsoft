@@ -32,7 +32,6 @@ const PrivacyPolicies = () => {
       <Typography variant="subtitle1" sx={{ mb: 3, color: "#A0A0A0" }}>
         Fecha de entrada en vigencia: Marzo 2025
       </Typography>
-
       <Box sx={{ mb: 4 }}>
         <Typography variant="h6" sx={{ color: "#BC6705", fontWeight: "bold" }}>
           1. Introducción

@@ -1,5 +1,8 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import MainLayout from "../components/layout/MainLayout";
+import AllPages from "../pages/AllPages";
+import PrivacyPolicies from "../pages/PrivacyPolicies";
+import Us from "../pages/Us";
 
 import HomePage from "../pages/HomePage";
 import Members from "pages/Members";
@@ -14,9 +17,7 @@ import { Outlet } from "react-router-dom";
 import Register from "pages/Register";
 import ProtectedRoute from "core/utils/ProtectedRoute";
 import NotFound from "pages/NotFound";
-import AllPages from "../pages/AllPages";
-import PrivacyPolicies from "../pages/PrivacyPolicies";
-import Us from "../pages/Us";
+
 
 function MainLayoutWrapper() {
   return (
