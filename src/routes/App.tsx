@@ -1,6 +1,4 @@
-// App.tsx
-import React from "react";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import MainLayout from "../components/layout/MainLayout";
 import AllPages from "../pages/AllPages";
 import PrivacyPolicies from "../pages/PrivacyPolicies";
@@ -17,6 +15,9 @@ import Routines from "pages/Routines";
 import Login from "pages/Login";
 import { Outlet } from "react-router-dom";
 import Register from "pages/Register";
+import ProtectedRoute from "core/utils/ProtectedRoute";
+import NotFound from "pages/NotFound";
+
 
 function MainLayoutWrapper() {
   return (
@@ -30,23 +31,28 @@ function App() {
   return (
     <BrowserRouter>
       <Routes>
+        <Route path="/" element={<Navigate to="/landing" replace />} />
+
         <Route path="/login" element={<Login />} />
-        <Route path="/register" element={<Register />} />
-        <Route path="/" element={<AllPages />} />
+        <Route path="/landing" element={<AllPages />} />
           <Route path="/privacy-policies" element={<PrivacyPolicies />} /> 
           <Route path="/us" element={<Us />} /> 
 
         {/* Rutas con MainLayout */}
-        <Route element={<MainLayoutWrapper />}>
-          <Route path="/" element={<HomePage />} />
-          <Route path="/add" element={<Add />} />
-          <Route path="/members" element={<Members />} />
-          <Route path="/qr" element={<QR />} />
-          <Route path="/mymembers" element={<MyMembers />} />
-          <Route path="/assistance" element={<Assistance />} />
-          <Route path="/stadistics" element={<Stadistics />} />
-          <Route path="/routines" element={<Routines />} />
-          <Route path="*" element={<h1>Not Found</h1>} />
+        <Route element={<ProtectedRoute />}>
+        <Route path="/register" element={<Register />} />
+        <Route path="*" element={<NotFound />} />
+
+          <Route element={<MainLayoutWrapper />}>
+            <Route path="/home" element={<HomePage />} />
+            <Route path="/add" element={<Add />} />
+            <Route path="/members" element={<Members />} />
+            <Route path="/qr" element={<QR />} />
+            <Route path="/mymembers" element={<MyMembers />} />
+            <Route path="/assistance" element={<Assistance />} />
+            <Route path="/stadistics" element={<Stadistics />} />
+            <Route path="/routines" element={<Routines />} />
+          </Route>
         </Route>
       </Routes>
     </BrowserRouter>

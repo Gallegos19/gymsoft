@@ -1,8 +1,8 @@
 import { useState } from "react";
 import { Box, Typography, Button, Fade } from "@mui/material";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
-import MyAppPhone from "../assets/img/Movil.png";
-import MyAppPc from "../assets/img/MyAppPc.png";
+import MyAppPhone from "../assets/Movil.png";
+import MyAppPc from "../assets/MyAppPc.png";
 
 const MyApp = () => {
   const [selectedView, setSelectedView] = useState<"admin" | "client" | null>(null);

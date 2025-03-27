@@ -1,14 +1,14 @@
-import OurService from "../pages/OurService";
-import HomePage from "../pages/HomeLanding";
+import OurService from "./OurService";
+import HomePage from "./HomeLanding";
 import NavBar from "../components/ui/NavBar";
-import Functionality from "../pages/Functionality";
-import Plans from "../pages/Plans";
-import MyApp from "../pages/MyApp";
-import Contact from "../pages/Contact";
+import Functionality from "./Functionality";
+import Plans from "./Plans";
+import MyApp from "./MyApp";
+import Contact from "./Contact";
 
 const AllPages = () => {
   return (
-    <div style={{ display: "flex", flexDirection: "column", overflow: "hidden" }}>
+    <div style={{ display: "flex", flexDirection: "column", overflow: "hidden" ,background: "linear-gradient(180deg, #0D0E13 17%, #1E1E1F 100%)", }}>
       <NavBar />
 
       <section id="home" style={{ width: "100%", minHeight: "100vh" }}>

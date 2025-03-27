@@ -20,23 +20,19 @@ import { styled } from '@mui/material/styles';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Cell } from 'recharts';
 import Header from "../components/ui/Header";
 import img from 'assets/young-fitness-man-studio.avif'
+import GetAssistanceStadistic from "../api/clients/GetAssistanceStadistic"; // ajusta el path si es necesario
+import { StorageService } from "../core/services/StorageService";
+import GetClients, { Client } from "../api/clients/GetClients";
+import Swal from "sweetalert2";
+import RenovattionMember from "../api/clients/RenovattionMember";
+import GetHistory, {GetHistoryResponse} from "../api/clients/GetHistory";
 
-// Define the data interface
+
 interface DataItem {
   name: string;
   value: number;
 }
 
-// Sample data for the chart
-const data: DataItem[] = [
-  { name: 'Lun', value: 50 },
-  { name: 'Mar', value: 65 },
-  { name: 'Mie', value: 80 },
-  { name: 'Jue', value: 60 },
-  { name: 'Vie', value: 95 },
-  { name: 'Sab', value: 40 },
-  { name: 'Dom', value: 30 },
-];
 
 // Bar colors
 const BAR_COLOR = '#6b7280';
@@ -127,28 +123,147 @@ const HomePage: React.FC = () => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const isTablet = useMediaQuery(theme.breakpoints.down('md'));
+  const storage = StorageService.getInstance();
+  const token = storage.getItem("auth_token");
+  const id_gym = Number(storage.getItem("id_gimnasios"));
+
+  const [membersData, setMembersData] = useState<Client[]>([]);
+  const [historyData, setHistoryData] = useState<GetHistoryResponse[]>([]);
+  const [ingreso, setIngreso] = useState<number>(0);
   
+  const [chartData, setChartData] = useState<DataItem[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const getCategory = (value: number): string => {
+    return value === 0 ? "mes" : "semana";
+  };
+  
+
+  const fetchData = async () => {
+    if (!token || !id_gym) return;
+      const category = getCategory(tabValue); // convierte el número en string válido
+
+  const response = await GetAssistanceStadistic.getById(id_gym, category, token);
+
+    if (response && response.data) {
+      const rawData = response.data;
+
+      const mappedData: DataItem[] = Object.entries(rawData).map(([key, value]) => ({
+        name: key.charAt(0).toUpperCase() + key.slice(1, 3),
+        value: value,
+      }));
+
+      setChartData(mappedData);
+    }
+
+    setLoading(false);
+  };
+
+  const fetchHistory = async () => {
+    if (!token || !id_gym) return;
+  
+    const response = await GetHistory.getHistory(id_gym, token, "mes");
+  
+    if (response && !Array.isArray(response)) {
+      setHistoryData([response]);
+  
+      const estadisticas = response.data;
+      console.log("Estadísticas:", estadisticas.estadisticas.ingresos_totales);
+  
+      if (estadisticas && estadisticas.estadisticas.ingresos_totales !== undefined) {
+        setIngreso(estadisticas.estadisticas.ingresos_totales);
+      } else {
+        console.warn("No hay datos en 'ingresos_totales'");
+        setIngreso(0);
+      }
+    } else {
+      setHistoryData([]);
+    }
+  
+    setLoading(false);
+  };
+  
+
+  const fetchClients = async () => {
+    const idGymRaw = storage.getItem("id_gimnasios");
+    const idGym = Number(idGymRaw);
+
+    if (!token || isNaN(idGym)) {
+      console.warn("Token o ID de gimnasio inválido");
+      setLoading(false);
+      return;
+    }
+
+    const response = await GetClients.getAllClients(idGym, token);
+    if (!Array.isArray(response)) {
+      setMembersData(response.data);
+    } else {
+      setMembersData([]);
+    }
+    setLoading(false);
+  };
+
+
+  useEffect(() => {
+    fetchHistory();
+    fetchClients();
+    fetchData();
+  }, [tabValue]);
+  
+
+  const handleChangeMembershipStatus = async (member: Client, newStatus: boolean) => {
+
+    if (!token) {
+      Swal.fire({
+        icon: 'error',
+        title: 'Token no disponible',
+        text: 'No se pudo recuperar el token de autenticación.',
+        confirmButtonColor: '#ff7b00'
+      });
+      return;
+    }
+  
+    const success = await RenovattionMember.RenovattionMember(member, token, newStatus);
+  
+    if (success) {
+      await Swal.fire({
+        icon: 'success',
+        title: `Miembro ${newStatus ? 'activado' : 'desactivado'} con éxito`,
+        showConfirmButton: false,
+        timer: 1500,
+        background: '#1a1e2a',
+        color: '#fff'
+      });
+  
+      // Reload después de alerta
+      window.location.reload();
+    } else {
+      Swal.fire({
+        icon: 'error',
+        title: 'Error',
+        text: 'No se pudo cambiar el estado del miembro.',
+        confirmButtonColor: '#ff7b00',
+        background: '#1a1e2a',
+        color: '#fff'
+      });
+    }
+  };
   // Membresías vendidas - datos de ejemplo
-  const [memberships, setMemberships] = useState([
-    { id: 1, name: "Juan Perez" },
-    { id: 2, name: "Maria Lopez" },
-    { id: 3, name: "Carlos Rodriguez" },
-    { id: 4, name: "Ana Martinez" }
-  ]);
+
   
   // Ajustar el número de membresías mostradas según el tamaño de pantalla
-  const [visibleMemberships, setVisibleMemberships] = useState(memberships.slice(0, 2));
+  const [visibleMemberships, setVisibleMemberships] = useState(membersData.slice(0, 2));
   
   useEffect(() => {
     // En pantallas muy pequeñas mostramos solo 2, en tablet 3, en desktop todas
     if (isMobile) {
-      setVisibleMemberships(memberships.slice(0, 2));
+      setVisibleMemberships(membersData.slice(0, 2));
     } else if (isTablet) {
-      setVisibleMemberships(memberships.slice(0, 3));
+      setVisibleMemberships(membersData.slice(0, 3));
     } else {
-      setVisibleMemberships(memberships);
+      setVisibleMemberships(membersData);
     }
-  }, [isMobile, isTablet, memberships]);
+  }, [isMobile, isTablet, membersData]);
 
   const handleTabChange = (event: React.SyntheticEvent, newValue: number) => {
     setTabValue(newValue);
@@ -164,7 +279,7 @@ const HomePage: React.FC = () => {
     }}>
       <Grid container spacing={{ xs: 1, sm: 2 }}> 
         <Grid item xs={12}>
-          <Header gymName="NOMBRE DEL GYM" />
+          <Header/>
         </Grid>
 
         {/* Statistics Section (en móvil va primero) */}
@@ -175,7 +290,7 @@ const HomePage: React.FC = () => {
                 Ingreso Mensual
               </Typography>
               <Typography variant={isMobile ? "h5" : "h4"} sx={{ mt: 0.5 }}>
-                $1000 <Typography component="span" variant="body2" color="#6b7280">MXN</Typography>
+                {ingreso}<Typography component="span" variant="body2" color="#6b7280">MXN</Typography>
               </Typography>
             </StatBox>
           </Grid>
@@ -193,15 +308,14 @@ const HomePage: React.FC = () => {
                 variant={isMobile ? "fullWidth" : "standard"}
               >
                 <Tab label="Mes" sx={{ color: tabValue === 0 ? '#ff7b00' : '#6b7280' }} />
-                <Tab label="Quincena" sx={{ color: tabValue === 1 ? '#ff7b00' : '#6b7280' }} />
-                <Tab label="Día" sx={{ color: tabValue === 2 ? '#ff7b00' : '#6b7280' }} />
+                <Tab label="Semana" sx={{ color: tabValue === 1 ? '#ff7b00' : '#6b7280' }} />
               </ResponsiveTabs>
             </Box>
             
             <Box sx={{ height: { xs: 200, sm: 250, md: 300 } }}> {/* Altura responsiva */}
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart
-                  data={data}
+                  data={chartData}
                   margin={{ 
                     top: 5, 
                     right: isMobile ? 10 : 30, 
@@ -223,7 +337,7 @@ const HomePage: React.FC = () => {
                     radius={[5, 5, 0, 0]} 
                     barSize={isMobile ? 15 : 30}
                   >
-                    {data.map((entry, index) => (
+                    {chartData.map((entry, index) => (
                       <Cell 
                         key={`cell-${index}`} 
                         fill={entry.name === 'Vie' ? HIGHLIGHT_COLOR : BAR_COLOR} 
@@ -247,7 +361,7 @@ const HomePage: React.FC = () => {
                     Ingreso Mensual
                   </Typography>
                   <Typography variant="h4" sx={{ mt: 1 }}>
-                    $1000 <Typography component="span" variant="body2" color="#6b7280">MXN</Typography>
+                    {ingreso} <Typography component="span" variant="body2" color="#6b7280">MXN</Typography>
                   </Typography>
                 </StatBox>
               </Grid>
@@ -258,23 +372,25 @@ const HomePage: React.FC = () => {
               <StatBox>
                 <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
                   <Typography variant="body2" color="#ff7b00">
-                    Membresias Vendidas
+                    Membresias Vencidas
                   </Typography>
                   {isMobile && (
                     <Typography variant="caption" color="#6b7280">
-                      Mostrando {visibleMemberships.length} de {memberships.length}
+                      Mostrando {visibleMemberships.length} de {membersData.length}
                     </Typography>
                   )}
                 </Box>
                 
                 {/* Using ScrollHiddenList with the new syntax */}
                 <ScrollHiddenList disablePadding>
-                  {visibleMemberships.map((item) => (
+                {visibleMemberships
+                  .filter((item) => item.membership_status === false)
+                  .map((item) => (
                     <ListItem 
                       key={item.id}
                       disablePadding
                       secondaryAction={
-                        <IconButton edge="end" sx={{ color: '#6b7280' }} size={isMobile ? "small" : "medium"}>
+                        <IconButton edge="end" sx={{ color: '#6b7280' }} size={isMobile ? "small" : "medium"} onClick={() => handleChangeMembershipStatus(item, true)}>
                           <RefreshIcon fontSize={isMobile ? "small" : "medium"} />
                         </IconButton>
                       }
@@ -300,7 +416,8 @@ const HomePage: React.FC = () => {
                         }}
                       />
                     </ListItem>
-                  ))}
+                ))}
+
                 </ScrollHiddenList>
               </StatBox>
             </Grid>

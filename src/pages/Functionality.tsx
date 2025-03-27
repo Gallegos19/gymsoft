@@ -1,7 +1,7 @@
 import { Box, Typography } from "@mui/material";
-import FunctionalityEstadisticas from "../assets/img/FunctionalityEstadisticas.png";
-import FunctionalityAsistencias from "../assets/img/FunctionalityAsistencias.png";
-import FunctionalityRutinas from "../assets/img/FunctionalityRutinas.png";
+import FunctionalityEstadisticas from "../assets/FunctionalityEstadisticas.png";
+import FunctionalityAsistencias from "../assets/FunctionalityAsistencias.png";
+import FunctionalityRutinas from "../assets/FunctionalityRutinas.png";
 
 const Functionality = () => {
   return (

@@ -6,7 +6,9 @@ import {
     Card,
     CardContent,
   } from "@mui/material";
-  
+import Navbar from "../components/ui/NavBar";
+
+
   const Us = () => {
     return (
       <Box
@@ -19,6 +21,7 @@ import {
           py: 5,
         }}
       >
+        <Navbar />
         <Container
           maxWidth="md"
           sx={{
@@ -42,7 +45,6 @@ import {
           >
             Sobre NovaCode
           </Typography>
-  
           <Typography
             variant="h6"
             sx={{ color: "#BC6705", fontWeight: "bold", mt: 3 }}
@@ -54,7 +56,6 @@ import {
             digitales innovadoras. Desde sitios web hasta aplicaciones móviles,
             ayudamos a nuestros clientes a alcanzar sus objetivos tecnológicos.
           </Typography>
-  
           <Grid container spacing={3}>
             <Grid item xs={12} sm={6}>
               <Card
@@ -101,7 +102,6 @@ import {
               </Card>
             </Grid>
           </Grid>
-  
           <Typography
             variant="h6"
             sx={{ color: "#BC6705", fontWeight: "bold", mt: 4 }}
@@ -117,7 +117,6 @@ import {
             <br />
             <b>👥 Trabajo en equipo:</b> Crecemos juntos para lograr más.
           </Typography>
-  
           <Typography
             variant="h6"
             sx={{ color: "#BC6705", fontWeight: "bold", mt: 4 }}
@@ -132,7 +131,6 @@ import {
             ✅ Soluciones a la medida para cada cliente.
             <br />✅ Soporte continuo y atención personalizada.
           </Typography>
-  
           <Typography
             variant="h6"
             sx={{ color: "#BC6705", fontWeight: "bold", mt: 4 }}
@@ -140,15 +138,14 @@ import {
             Contáctanos
           </Typography>
           <Typography>
-            📧 Email: contacto@novacode.com
+            📧 Email: Novacode@gallegosb.xyz
             <br />
-            🌐 Web: www.novacode.com
+            🌐 Web: www.gsoft.gallegosb.xyz
             <br />
           </Typography>
         </Container>
       </Box>
     );
   };
-  
+
   export default Us;
-  

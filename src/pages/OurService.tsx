@@ -2,12 +2,13 @@ import React, { useState } from "react";
 import { Box, Typography, Grid, Card } from "@mui/material";
 import { styled } from "@mui/system";
 
-import OurServiceAutomatizacion from "../assets/img/OurServiceAutomatización.jpg";
-import OurServiceControlFinanciero from "../assets/img/OurServiceControlFinanciero.jpg";
-import OurServiceUnionConClientes from "../assets/img/OurServiceUnionConClientes.jpg";
-import OurServiceMultiplataforma from "../assets/img/OurServiceMultiplataforma.jpg";
-import OurServiceSeguridad from "../assets/img/OurServiceSeguridad.jpg";
-import OurServiceFacilDeUsar from "../assets/img/OurServiceFacilDeUsar.jpg";
+import OurServiceAutomatizacion from "../assets/OurServiceAutomatización.jpg";
+import OurServiceControlFinanciero from "../assets/OurServiceControlFinanciero.jpg";
+import OurServiceUnionConClientes from "../assets/OurServiceUnionConClientes.jpg";
+import OurServiceMultiplataforma from "../assets/OurServiceMultiplataforma.jpg";
+import OurServiceSeguridad from "../assets/OurServiceSeguridad.jpg";
+import OurServiceFacilDeUsar from "../assets/OurServiceFacilDeUsar.jpg";
+
 
 const services = [
   {
@@ -94,6 +95,7 @@ const OurService: React.FC = () => {
         px: 3,
       }}
     >
+     
       <Typography variant="h3" fontWeight="bold" color="#E27C08" mb={3}>
         Nuestro Servicio
       </Typography>

@@ -62,11 +62,31 @@ const Contact: React.FC = () => {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (validate()) {
+      // Prepare email body
+      const emailBody = `
+Asunto: ${formData.asunto}
+Nombre: ${formData.nombre}
+Teléfono: ${formData.telefono}
+Correo: ${formData.correo}
+
+Mensaje:
+${formData.mensaje}
+      `;
+
+      // Encode the email body for URL
+      const encodedBody = encodeURIComponent(emailBody);
+
+      // Open default email client
+      window.location.href = `mailto:Novacode@gallegosb.xyz?subject=${encodeURIComponent(formData.asunto)}&body=${encodedBody}`;
+
+      // Show success alert
       setAlert({
         open: true,
-        message: "Formulario enviado con éxito",
+        message: "Formulario preparado para envío por correo",
         severity: "success",
       });
+
+      // Reset form
       setFormData({
         asunto: "",
         nombre: "",

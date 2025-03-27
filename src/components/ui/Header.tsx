@@ -1,20 +1,52 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { Typography, Box, Avatar, useMediaQuery, useTheme } from "@mui/material";
+import { GetGym } from "../../api/clients/GetGym";
+import { StorageService } from "../../core/services/StorageService";
 
 interface HeaderProps {
-  gymName: string;
   userName?: string;
   userAvatar?: string;
 }
 
-const Header: React.FC<HeaderProps> = ({ 
-  gymName,
+const Header: React.FC<HeaderProps> = ({
   userName = "Bienvenido",
-  userAvatar = "S"
+  userAvatar = "G"
 }) => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
-  
+
+  const [gymName, setGymName] = useState<string>("");
+
+  useEffect(() => {
+    const fetchGym = async () => {
+      const storage = StorageService.getInstance();
+      const storedName = storage.getItem("app_name_gimnasio");
+
+      if (storedName) {
+        setGymName(storedName);
+        return;
+      }
+
+      const token = storage.getItem("auth_token");
+      const id_gimnasio_raw = storage.getItem("id_gimnasios");
+      const id_gimnasio = Number(id_gimnasio_raw);
+
+      if (token && !isNaN(id_gimnasio)) {
+        const gymData = await GetGym.getInstance().getGymById(id_gimnasio, token);
+        if (gymData) {
+          storage.setItem("app_name_gimnasio", gymData.data.name);
+          setGymName(gymData.data.name);
+        } else {
+          console.log("No se pudo obtener el gimnasio");
+        }
+      } else {
+        console.warn("Token o ID de gimnasio inválido");
+      }
+    };
+
+    fetchGym();
+  }, []);
+
   return (
     <Box sx={{ 
       display: 'flex', 
@@ -31,7 +63,7 @@ const Header: React.FC<HeaderProps> = ({
           fontWeight: 'bold'
         }}
       >
-        {gymName}
+        {gymName || "Cargando gimnasio..."}
       </Typography>
       
       <Box sx={{ 

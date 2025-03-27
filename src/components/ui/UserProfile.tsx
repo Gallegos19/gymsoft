@@ -19,6 +19,7 @@ export interface UserData {
   entryTime: string;
   exitTime: string;
   active: boolean;
+  photo?: string; 
 }
 
 interface UserProfileProps {
@@ -70,7 +71,10 @@ const UserProfile: React.FC<UserProfileProps> = ({ userData }) => {
       <ProfileHeaderBox>
         <Box flex={1}>
           <UserImageBox>
-            <AccountBoxIcon sx={{ fontSize: 80, color: '#fff' }} />
+          {userData.photo && (
+            <img src={userData.photo} alt="Foto de usuario" style={{ width: 100, height: 100, borderRadius: '50%' }} />
+          )}
+          {!userData.photo && <AccountBoxIcon sx={{ color: '#fff', fontSize: 100 }} />}
           </UserImageBox>
         </Box>
         <Box flex={1} textAlign="right">
@@ -84,6 +88,7 @@ const UserProfile: React.FC<UserProfileProps> = ({ userData }) => {
       
       <Box flex={1} display="flex" flexDirection="column" justifyContent="space-between">
         <Box>
+
           <InfoRow>
             <PersonIcon />
             <Typography sx={{color: '#fff'}}>{userData.name}</Typography>

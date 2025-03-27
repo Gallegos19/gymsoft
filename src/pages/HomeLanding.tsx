@@ -1,6 +1,6 @@
 import React from "react"; 
 import { Box, Typography, Button } from "@mui/material";
-import Img from "../assets/img/LandingBackground.jpg";
+import Img from "../assets/LandingBackground.jpg";
 
 const HomePage: React.FC = () => {
   const handleScrollToService = () => {

@@ -16,6 +16,10 @@ const Navbar = () => {
   }, []);
 
   const scrollToContact = () => {
+
+    if (location.pathname !== "/landing") {
+        navigate("/");
+      }
     const contactSection = document.getElementById("contact");
     if (contactSection) {
       contactSection.scrollIntoView({ behavior: "smooth" });
@@ -42,7 +46,7 @@ const Navbar = () => {
           GSOFT
         </Typography>
         <Box sx={{ display: "flex", gap: 3, mr: 2 }}>
-          {["Nosotros", "Políticas de privacidad", "Contáctanos"].map((text) => (
+          {["Inicia Sesion","Nosotros", "Políticas de privacidad", "Contáctanos"].map((text) => (
             <Typography
               key={text}
               variant="h6"
@@ -54,6 +58,8 @@ const Navbar = () => {
                   ? () => navigate("/privacy-policies") 
                   : text === "Nosotros"
                   ? () => navigate("/us")
+                  : text === "Inicia Sesion"
+                  ? () => navigate("/login")
                   : undefined
               }
             >

@@ -14,7 +14,11 @@ import CameraAltIcon from '@mui/icons-material/CameraAlt';
 import CloseIcon from '@mui/icons-material/Close';
 import Header from "../components/ui/Header";
 import qr from 'assets/qr.avif';
-import UserProfile, { UserData } from "../components/ui/UserProfile"; // Importamos el nuevo componente
+import UserProfile, { UserData } from "../components/ui/UserProfile"; 
+import CreateAttendance from "../api/clients/CreateAssistance";
+import GetUserById from "../api/clients/GetUserById";
+import { StorageService } from "../core/services/StorageService";
+import Swal from "sweetalert2";
 
 import jsQR from "jsqr";
 
@@ -91,7 +95,6 @@ const PermissionMessage = styled(Box)({
   padding: '10px'
 });
 
-// Define interface for HTML video element
 interface HTMLVideoElementWithReadyState extends HTMLVideoElement {
   readyState: number;
 }
@@ -102,13 +105,27 @@ const QR = () => {
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [permissionDenied, setPermissionDenied] = useState<boolean>(false);
-  const [scanResult, setScanResult] = useState<string | null>(null);
+  const [scanResult, setScanResult] = useState<string | null>(null);  
+  const [userData, setUserData] = useState<UserData | null>(null);
+
+  const storage = StorageService.getInstance();
+  const token = storage.getItem("auth_token");
   
   // Refs - fixed the scanIntervalRef type to accept NodeJS.Timer
   const videoRef = useRef<HTMLVideoElementWithReadyState | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const scanIntervalRef = useRef<NodeJS.Timer | null>(null);
+  
+  const defaultUserData: UserData = {
+  name: "Esperando escaneo...",
+  age: "-",
+  membershipType: "-",
+  entryTime: "-",
+  exitTime: "-",
+  active: false
+};
+
   
   const currentDate = new Date().toLocaleDateString('es-ES', {
     day: 'numeric',
@@ -353,11 +370,103 @@ const QR = () => {
     scanIntervalRef.current = intervalId;
   };
   
-  // Process QR code result - fixed type annotation
-  const processQRResult = (result: string): void => {
-    addDebugInfo(`Procesando resultado QR: ${result.substring(0, 20)}...`);
+  const processQRResult = async (result: string): Promise<void> => {
+    addDebugInfo(`Procesando resultado QR: ${result.substring(0, 30)}...`);
     setScanResult(result);
+  
+    let parsedQR;
+    try {
+      parsedQR = JSON.parse(result);
+    } catch (err) {
+      setError("El código QR no tiene un formato válido");
+      return;
+    }
+  
+    if (!parsedQR.id) {
+      setError("El código QR no contiene un ID válido");
+      return;
+    }
+  
+    const userId = Number(parsedQR.id);
+    if (isNaN(userId)) {
+      setError("ID de usuario inválido en el QR");
+      return;
+    }
+  
+    // Guarda datos para mostrar en perfil si lo necesitas
+    // setUserProfile(parsedQR); (si deseas usarlo con <UserProfile userData={userProfile} />)
+  
+    // Obtener token de sesión
+    if (!token) {
+      setError("Token de autenticación no encontrado");
+      Swal.fire({
+          icon: 'error',
+          title: 'Token no disponible',
+          text: 'No se pudo recuperar el token de autenticación.',
+          confirmButtonColor: '#ff7b00'
+      });
+      return;
+    }
+  
+    try {
+      const success = await CreateAttendance.create({ id_user: userId }, token);
+  
+      if (success) {
+        addDebugInfo("Asistencia registrada exitosamente");
+        await Swal.fire({
+                      icon: 'success',
+                      title: `Asistencia registrada exitosamente`,
+                      showConfirmButton: false,
+                      timer: 1500,
+                      background: '#1a1e2a',
+                      color: '#fff'
+                    });
+
+                    try {
+                      const success = await CreateAttendance.create({ id_user: userId }, token);
+                    
+                      if (success) {
+                        addDebugInfo("Asistencia registrada exitosamente");
+                    
+                        // Obtener datos completos del usuario desde la API
+                        const fullUserData = await GetUserById.getUser(userId, token);
+                        if (fullUserData) {
+                          setUserData({
+                            name: `${fullUserData.name} ${fullUserData.last_name}`,
+                            age: `${fullUserData.old} años`,
+                            membershipType: fullUserData.id_actualPlan,
+                            entryTime: fullUserData.entrada,
+                            exitTime: fullUserData.salida,
+                            active: fullUserData.membership_status,
+                            photo: fullUserData.photo, // asegúrate que UserProfile soporte esto
+                          });
+                        }
+                    
+                        await Swal.fire({
+                          icon: 'success',
+                          title: `Asistencia registrada exitosamente`,
+                          showConfirmButton: false,
+                          timer: 1500,
+                          background: '#1a1e2a',
+                          color: '#fff'
+                        });
+                      } else {
+                        setError("No se pudo registrar la asistencia");
+                      }
+                    } catch (error) {
+                      console.error("Error al registrar asistencia:", error);
+                      setError("Error al registrar asistencia");
+                    }
+                    
+      } else {
+        setError("No se pudo registrar la asistencia");
+      }
+    } catch (error) {
+      console.error("Error al registrar asistencia:", error);
+      setError("Error al registrar asistencia");
+    }
   };
+  
   
   // Cleanup effect
   useEffect(() => {
@@ -368,21 +477,11 @@ const QR = () => {
     };
   }, []);
   
-  // Mock user data for demo
-  const userData: UserData = {
-    name: "Juan Perez",
-    age: "18 años",
-    membershipType: "Normal",
-    entryTime: "3:00 pm",
-    exitTime: "6:00 pm",
-    active: true
-  };
-  
   return (
     <DarkContainer>
       <Grid container spacing={2}>
         <Grid item xs={12}>
-          <Header gymName="NOMBRE DEL GYM" />
+          <Header/>
         </Grid>
         
         <Grid item xs={12}>
@@ -521,7 +620,7 @@ const QR = () => {
           
           {/* Información del usuario - Lado derecho */}
           <Grid item xs={12} md={7} lg={8}>
-            <UserProfile userData={userData} />
+            <UserProfile userData={userData || defaultUserData} />
           </Grid>
         </Grid>
       </Grid>

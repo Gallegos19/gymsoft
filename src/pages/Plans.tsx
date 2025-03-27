@@ -1,12 +1,12 @@
 import { Card, CardContent, Typography, Grid, Box } from "@mui/material";
-import PlansAnual from "../assets/img/PlansAnual.jpg";
-import PlansMensual from "../assets/img/PlansMensual.jpg";
-import PlansSemestral from "../assets/img/PlansSemestral.jpg";
+import PlansAnual from "../assets/PlansAnual.jpg";
+import PlansMensual from "../assets/PlansMensual.jpg";
+import PlansSemestral from "../assets/PlansSemestral.jpg";
 
 const plans = [
-  { title: "ANUAL", price: "$7,000.00 MXN", image: PlansAnual },
-  { title: "SEMESTRAL", price: "$5,000.00 MXN", image: PlansSemestral },
-  { title: "MENSUAL", price: "$2,000.00 MXN", image: PlansMensual },
+  { title: "ANUAL", price: "$5,000.00 MXN", image: PlansAnual },
+  { title: "SEMESTRAL", price: "$3,500.00 MXN", image: PlansSemestral },
+  { title: "MENSUAL", price: "$800.00 MXN", image: PlansMensual },
 ];
 
 const Plans = () => {
